@@ -1,11 +1,15 @@
-import React from 'react';
-import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
+import { PureComponent } from 'react';
+
 import { injectIntl } from 'react-intl';
+
 import classNames from 'classnames';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+
 import EmojiView from './emoji_view';
 
-class EmojiReactionButton extends React.PureComponent {
+class EmojiReactionButton extends PureComponent {
 
   static propTypes = {
     name: PropTypes.string,
@@ -49,13 +53,14 @@ class EmojiReactionButton extends React.PureComponent {
 
 }
 
-class StatusEmojiReactionsBar extends React.PureComponent {
+class StatusEmojiReactionsBar extends PureComponent {
 
   static propTypes = {
     emojiReactions: ImmutablePropTypes.list.isRequired,
     status: ImmutablePropTypes.map,
     onEmojiReact: PropTypes.func,
     onUnEmojiReact: PropTypes.func,
+    myReactionOnly: PropTypes.bool,
   };
 
   onEmojiReact = (name) => {
@@ -69,20 +74,23 @@ class StatusEmojiReactionsBar extends React.PureComponent {
   };
 
   render () {
-    const { emojiReactions } = this.props;
+    const { emojiReactions, myReactionOnly } = this.props;
 
-    const emojiButtons = Array.from(emojiReactions).filter(emoji => emoji.get('count') !== 0).map((emoji, index) => (
-      <EmojiReactionButton
-        key={index}
-        name={emoji.get('name')}
-        count={emoji.get('count')}
-        me={emoji.get('me')}
-        url={emoji.get('url')}
-        staticUrl={emoji.get('static_url')}
-        domain={emoji.get('domain')}
-        onEmojiReact={this.onEmojiReact}
-        onUnEmojiReact={this.onUnEmojiReact}
-      />));
+    const emojiButtons = Array.from(emojiReactions)
+      .filter(emoji => emoji.get('count') !== 0)
+      .filter(emoji => !myReactionOnly || emoji.get('me'))
+      .map((emoji, index) => (
+        <EmojiReactionButton
+          key={index}
+          name={emoji.get('name')}
+          count={myReactionOnly ? 1 : emoji.get('count')}
+          me={emoji.get('me')}
+          url={emoji.get('url')}
+          staticUrl={emoji.get('static_url')}
+          domain={emoji.get('domain')}
+          onEmojiReact={this.onEmojiReact}
+          onUnEmojiReact={this.onUnEmojiReact}
+        />));
 
     return (
       <div className='status__emoji-reactions-bar'>

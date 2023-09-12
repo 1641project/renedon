@@ -5,7 +5,7 @@ import type { List } from 'immutable';
 import type { Account } from '../../types/resources';
 import { autoPlayGif } from '../initial_state';
 
-import Skeleton from './skeleton';
+import { Skeleton } from './skeleton';
 
 interface Props {
   account?: Account;
@@ -78,7 +78,7 @@ export class DisplayName extends React.PureComponent<Props> {
     } else if (account) {
       let acct = account.get('acct');
 
-      if (acct.indexOf('@') === -1 && localDomain) {
+      if (!acct.includes('@') && localDomain) {
         acct = `${acct}@${localDomain}`;
       }
 

@@ -2,6 +2,14 @@
 en:
   simple_form:
     hints:
+      account:
+        discoverable: Your public posts and profile may be featured or recommended in various areas of Mastodon and your profile may be suggested to other users.
+        display_name: Your full name or your fun name.
+        fields: Your homepage, pronouns, age, anything you want.
+        indexable: Your public posts may appear in search results on Mastodon. People who have interacted with your posts may be able to search them regardless.
+        note: 'You can @mention other people or #hashtags.'
+        show_collections: People will be able to browse through your follows and followers. People that you follow will see that you follow them regardless.
+        unlocked: People will be able to follow you without requesting approval. Uncheck if you want to review follow requests and chose whether to accept or reject new followers.
       account_alias:
         acct: Specify the username@domain of the account you want to move from
       account_migration:
@@ -38,29 +46,30 @@ en:
         current_username: To confirm, please enter the username of the current account
         digest: Only sent after a long period of inactivity and only if you have received any personal messages in your absence
         discoverable: Allow your account to be discovered by strangers through recommendations, trends and other features
+        discoverable_local: Disable the setting on federated servers. The setting is available this server only for avoiding full-text search on other servers
         dissubscribable: Your post is not picked by antenna
         email: You will be sent a confirmation e-mail
-        fields: You can have up to 4 items displayed as a table on your profile
         group: Reps sent to this account will be automatically BT'd and distributed to all accounts you follow!
         group_allow_private_message: Posts are duplicated and cannot be edited or deleted by the post
         header: PNG, GIF or JPG. At most %{size}. Will be downscaled to %{dimensions}px
         inbox_url: Copy the URL from the frontpage of the relay you want to use
         irreversible: Filtered posts will disappear irreversibly, even if filter is later removed
         locale: The language of the user interface, e-mails and push notifications
-        locked: Manually control who can follow you by approving follow requests
         password: Use at least 8 characters
         person: This is normal account
         phrase: Will be matched regardless of casing in text or content warning of a post
         scopes: Which APIs the application will be allowed to access. If you select a top-level scope, you don't need to select individual ones.
         setting_aggregate_reblogs: Do not show new boosts for posts that have been recently boosted (only affects newly-received boosts)
         setting_always_send_emails: Normally e-mail notifications won't be sent when you are actively using Mastodon
+        setting_bookmark_category_needed: When removing from all category, unbookmarked automatically
         setting_default_sensitive: Sensitive media is hidden by default and can be revealed with a click
         setting_display_media_default: Hide media marked as sensitive
         setting_display_media_hide_all: Always hide media
         setting_display_media_show_all: Always show media
-        setting_hide_network: Who you follow and who follows you will be hidden on your profile
-        setting_noindex: Affects your public profile and post pages
-        setting_show_application: The application you use to post will be displayed in the detailed view of your posts
+        setting_dtl_force_subscribable: Your post can be detected local user's antenna to subscribe deep timeline
+        setting_dtl_force_with_tag: "With using #%{tag} tag, your post settings will be changed forcibly"
+        setting_dtl_menu: Show DTL menu on web
+        setting_enable_emoji_reaction: If turn off, other users still can react your posts
         setting_use_blurhash: Gradients are based on the colors of the hidden visuals but obfuscate any details
         setting_use_pending_items: Hide timeline updates behind a click instead of automatically scrolling the feed
         username: You can use letters, numbers, and underscores
@@ -82,7 +91,7 @@ en:
         backups_retention_period: Keep generated user archives for the specified number of days.
         bootstrap_timeline_accounts: These accounts will be pinned to the top of new users' follow recommendations.
         closed_registrations_message: Displayed when sign-ups are closed
-        content_cache_retention_period: Posts from other servers will be deleted after the specified number of days when set to a positive value. This may be irreversible.
+        content_cache_retention_period: All posts and boosts from other servers will be deleted after the specified number of days. Some posts may not be recoverable. All related bookmarks, favourites and boosts will also be lost and impossible to undo.
         custom_css: You can apply custom styles on the web version of Mastodon.
         mascot: Overrides the illustration in the advanced web interface.
         media_cache_retention_period: Downloaded media files will be deleted after the specified number of days when set to a positive value, and re-downloaded on demand.
@@ -122,6 +131,9 @@ en:
       sessions:
         otp: 'Enter the two-factor code generated by your phone app or use one of your recovery codes:'
         webauthn: If it's an USB key be sure to insert it and, if necessary, tap it.
+      settings:
+        indexable: Your profile page may appear in search results on Google, Bing, and others.
+        show_application: You will always be able to see which app published your post regardless.
       tag:
         name: You can only change the casing of the letters, for example, to make it more readable
       user:
@@ -135,13 +147,18 @@ en:
         position: Higher role decides conflict resolution in certain situations. Certain actions can only be performed on roles with a lower priority
       webhook:
         events: Select events to send
+        template: Compose your own JSON payload using variable interpolation. Leave blank for default JSON.
         url: Where events will be sent to
     kmyblue: kmyblue
     labels:
       account:
+        discoverable: Feature profile and posts in discovery algorithms
         fields:
           name: Label
           value: Content
+        indexable: Include public posts in search results
+        show_collections: Show follows and followers on profile
+        unlocked: Automatically accept new followers
       account_alias:
         acct: Handle of the old account
       account_migration:
@@ -171,8 +188,8 @@ en:
         text: Explain why this decision should be reversed
       defaults:
         autofollow: Invite to follow your account
-        avatar: Avatar
-        bot: This is a bot account
+        avatar: Profile picture
+        bot: This is an automated account
         chosen_languages: Filter languages
         confirm_new_password: Confirm new password
         confirm_password: Confirm password
@@ -180,19 +197,19 @@ en:
         current_password: Current password
         data: Data
         discoverable: Suggest account to others
+        discoverable_local: Disallow suggesting account on other servers
         display_name: Display name
         dissubscribable: Reject any subscriptions
         email: E-mail address
         expires_in: Expire after
-        fields: Profile metadata
+        fields: Extra fields
         group: This is a group account
         group_allow_private_message: For group accounts, duplicate private or direct message
-        header: Header
+        header: Header picture
         honeypot: "%{label} (do not fill in)"
         inbox_url: URL of the relay inbox
         irreversible: Drop instead of hide
         locale: Interface language
-        locked: Require follow requests
         max_uses: Max number of uses
         my_actor_type: Account type
         new_password: New password
@@ -205,41 +222,63 @@ en:
         setting_aggregate_reblogs: Group boosts in timelines
         setting_always_send_emails: Always send e-mail notifications
         setting_auto_play_gif: Auto-play animated GIFs
+        setting_bio_markdown: Enable profile markdown
+        setting_bookmark_category_needed: Category selection needed when registering bookmark on web
         setting_boost_modal: Show confirmation dialog before boosting
-        setting_crop_images: Crop images in non-expanded posts to 16x9
         setting_default_language: Posting language
         setting_default_privacy: Posting privacy
         setting_default_reblog_privacy: Reblogging privacy
-        setting_default_searchability: Searchability
+        setting_default_searchability: Searchability of your own post
+        setting_default_searchability_of_search: Your search setting
         setting_default_sensitive: Always mark media as sensitive
         setting_delete_modal: Show confirmation dialog before deleting a post
         setting_disable_swiping: Disable swiping motions
+        setting_disallow_unlisted_public_searchability: Disallow public searchability when unlisted visibility
         setting_display_media: Media display
         setting_display_media_default: Default
         setting_display_media_expand: Show more medias
         setting_display_media_hide_all: Hide all
         setting_display_media_show_all: Show all
+        setting_dtl_force_subscribable: Ignore your dissubscribable setting when using the DTL tag
+        setting_dtl_force_with_tag: Post with DTL tag
         setting_emoji_reaction_streaming_notify_impl2: Enable stamp notification compat with Nyastodon, Catstodon, glitch-soc
+        setting_enable_emoji_reaction: Use stamp function
+        setting_enable_login_privacy: Enable login visibility
+        setting_emoji_reaction_policy: Stamp receive/display policy
+        setting_emoji_reaction_policy_items:
+          allow: Allow all
+          block: Block all but show existing reactions
+          block_and_hide: Block
+          followees_only: Followings only
+          followers_only: Followers only
+          mutuals_only: Mutuals only
+          outside_only: Followings or followers only
         setting_expand_spoilers: Always expand posts marked with content warnings
         setting_hide_followers_count: Hide followers count
         setting_hide_following_count: Hide following count
         setting_hide_network: Hide your social graph
+        setting_hide_recent_emojis: Hide recent emojis
         setting_hide_statuses_count: Hide statuses count
+        setting_link_preview: Generate post link preview card
         setting_noai: Set noai meta tags
-        setting_noindex: Opt-out of search engine indexing
         setting_public_post_to_unlisted: Convert public post to public unlisted if not using Web app
         setting_reduce_motion: Reduce motion in animations
         setting_reject_public_unlisted_subscription: Reject sending public unlisted posts to Misskey, Calckey
         setting_reject_unlisted_subscription: Reject sending unlisted posts to Misskey, Calckey
         setting_send_without_domain_blocks: Send your post to all server with administrator set as rejecting-post-server for protect you [DEPRECATED]
         setting_show_application: Disclose application used to send posts
+        setting_show_emoji_reaction_on_timeline: Show all stamps on timeline
+        setting_stay_privacy: Not change privacy after post
         setting_stop_emoji_reaction_streaming: Disable stamp streamings
         setting_system_font_ui: Use system's default font
         setting_theme: Site theme
+        setting_translatable_private: Allow other users translation of your private posts
         setting_trends: Show today's trends
         setting_unfollow_modal: Show confirmation dialog before unfollowing someone
+        setting_unsafe_limited_distribution: Send limit posts with unsafe way to other servers
         setting_use_blurhash: Show colorful gradients for hidden media
         setting_use_pending_items: Slow mode
+        setting_use_public_index: Include permitted accounts post to results of search
         severity: Severity
         sign_in_token_attempt: Security code
         title: Title
@@ -247,14 +286,25 @@ en:
         username: Username
         username_or_email: Username or Email
         whole_word: Whole word
+      dtl_force_with_tag:
+        full: Visibility is unlisted, searchability is public
+        none: No changes
+        searchability: Searchability is public
       email_domain_block:
         with_dns_records: Include MX records and IPs of the domain
+      emoji_reactions:
+        deny_from_all: Block all stamps
+        must_be_follower: Block stamps from non-followers
+        must_be_following: Block stamps from people you don't follow
       featured_tag:
         name: Hashtag
       filters:
         actions:
           hide: Hide completely
           warn: Hide with a warning
+        options:
+          exclude_follows: Exclude following users
+          exclude_localusers: Exclude local users
       form_admin_settings:
         activity_api_enabled: Publish aggregate statistics about user activity in the API
         backups_retention_period: User archive retention period
@@ -309,9 +359,18 @@ en:
         pending_account: New account needs review
         reblog: Someone boosted your post
         report: New report is submitted
+        software_updates:
+          all: Notify on all updates
+          critical: Notify on critical updates only
+          label: A new Mastodon version is available
+          none: Never notify of updates (not recommended)
+          patch: Notify on bugfix updates
         trending_tag: New trend requires review
       rule:
         text: Rule
+      settings:
+        indexable: Include profile page in search engines
+        show_application: Display from which app you sent a post
       tag:
         listable: Allow this hashtag to appear in searches and suggestions
         name: Hashtag
@@ -319,6 +378,7 @@ en:
         usable: Allow posts to use this hashtag
       user:
         role: Role
+        time_zone: Time zone
       user_role:
         color: Badge color
         highlighted: Display role as badge on user profiles
@@ -327,9 +387,11 @@ en:
         position: Priority
       webhook:
         events: Enabled events
+        template: Payload template
         url: Endpoint URL
     'no': 'No'
     not_recommended: Not recommended
+    overridden: Overridden
     recommended: Recommended
     required:
       mark: "*"

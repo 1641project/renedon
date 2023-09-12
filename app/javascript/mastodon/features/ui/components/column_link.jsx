@@ -1,13 +1,15 @@
-import React from 'react';
 import PropTypes from 'prop-types';
-import { NavLink } from 'react-router-dom';
-import { Icon }  from 'mastodon/components/icon';
-import classNames from 'classnames';
 
-const ColumnLink = ({ icon, text, to, href, method, badge, transparent, ...other }) => {
+import classNames from 'classnames';
+import { NavLink } from 'react-router-dom';
+
+import { Icon }  from 'mastodon/components/icon';
+
+const ColumnLink = ({ icon, text, to, href, method, badge, transparent, children, ...other }) => {
   const className = classNames('column-link', { 'column-link--transparent': transparent });
   const badgeElement = typeof badge !== 'undefined' ? <span className='column-link__badge'>{badge}</span> : null;
   const iconElement = typeof icon === 'string' ? <Icon id={icon} fixedWidth className='column-link__icon' /> : icon;
+  const childElement = typeof children !== 'undefined' ? <p>{children}</p> : null;
 
   if (href) {
     return (
@@ -23,6 +25,7 @@ const ColumnLink = ({ icon, text, to, href, method, badge, transparent, ...other
         {iconElement}
         <span>{text}</span>
         {badgeElement}
+        {childElement}
       </NavLink>
     );
   }
@@ -36,6 +39,7 @@ ColumnLink.propTypes = {
   method: PropTypes.string,
   badge: PropTypes.node,
   transparent: PropTypes.bool,
+  children: PropTypes.any,
 };
 
 export default ColumnLink;

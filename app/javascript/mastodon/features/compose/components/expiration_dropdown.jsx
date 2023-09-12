@@ -1,18 +1,22 @@
-import React from 'react';
 import PropTypes from 'prop-types';
+import { PureComponent } from 'react';
+
 import { injectIntl, defineMessages } from 'react-intl';
-import { IconButton } from '../../../components/icon_button';
-import Overlay from 'react-overlays/Overlay';
-import { supportsPassiveEvents } from 'detect-passive-events';
+
 import classNames from 'classnames';
+
+import { supportsPassiveEvents } from 'detect-passive-events';
+import Overlay from 'react-overlays/Overlay';
+
+import { IconButton } from '../../../components/icon_button';
 
 const messages = defineMessages({
   add_expiration: { id: 'status.expiration.add', defaultMessage: 'Set status expiration' },
 });
 
-const listenerOptions = supportsPassiveEvents ? { passive: true } : false;
+const listenerOptions = supportsPassiveEvents ? { passive: true, capture: true } : true;
 
-class ExpirationDropdownMenu extends React.PureComponent {
+class ExpirationDropdownMenu extends PureComponent {
 
   static propTypes = {
     style: PropTypes.object,
@@ -25,6 +29,7 @@ class ExpirationDropdownMenu extends React.PureComponent {
   handleDocumentClick = e => {
     if (this.node && !this.node.contains(e.target)) {
       this.props.onClose();
+      e.stopPropagation();
     }
   };
 
@@ -82,13 +87,13 @@ class ExpirationDropdownMenu extends React.PureComponent {
   };
 
   componentDidMount () {
-    document.addEventListener('click', this.handleDocumentClick, false);
+    document.addEventListener('click', this.handleDocumentClick, { capture: true });
     document.addEventListener('touchend', this.handleDocumentClick, listenerOptions);
     if (this.focusedItem) this.focusedItem.focus({ preventScroll: true });
   }
 
   componentWillUnmount () {
-    document.removeEventListener('click', this.handleDocumentClick, false);
+    document.removeEventListener('click', this.handleDocumentClick, { capture: true });
     document.removeEventListener('touchend', this.handleDocumentClick, listenerOptions);
   }
 
@@ -118,7 +123,7 @@ class ExpirationDropdownMenu extends React.PureComponent {
 
 }
 
-class ExpirationDropdown extends React.PureComponent {
+class ExpirationDropdown extends PureComponent {
 
   static propTypes = {
     isUserTouching: PropTypes.func,

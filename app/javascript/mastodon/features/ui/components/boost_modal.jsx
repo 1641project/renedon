@@ -1,19 +1,23 @@
-import React from 'react';
-import { connect } from 'react-redux';
-import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
+
 import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
-import Button from '../../../components/button';
-import StatusContent from '../../../components/status_content';
-import { Avatar } from '../../../components/avatar';
-import { RelativeTimestamp } from '../../../components/relative_timestamp';
-import { DisplayName } from '../../../components/display_name';
-import ImmutablePureComponent from 'react-immutable-pure-component';
-import { Icon }  from 'mastodon/components/icon';
-import AttachmentList from 'mastodon/components/attachment_list';
-import PrivacyDropdown from 'mastodon/features/compose/components/privacy_dropdown';
+
 import classNames from 'classnames';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+import ImmutablePureComponent from 'react-immutable-pure-component';
+import { connect } from 'react-redux';
+
 import { changeBoostPrivacy } from 'mastodon/actions/boosts';
+import AttachmentList from 'mastodon/components/attachment_list';
+import { Icon }  from 'mastodon/components/icon';
+import PrivacyDropdown from 'mastodon/features/compose/components/privacy_dropdown';
+
+import { Avatar } from '../../../components/avatar';
+import Button from '../../../components/button';
+import { DisplayName } from '../../../components/display_name';
+import { RelativeTimestamp } from '../../../components/relative_timestamp';
+import StatusContent from '../../../components/status_content';
 
 const messages = defineMessages({
   cancel_reblog: { id: 'status.cancel_reblog_private', defaultMessage: 'Unboost' },
@@ -21,8 +25,12 @@ const messages = defineMessages({
   public_short: { id: 'privacy.public.short', defaultMessage: 'Public' },
   unlisted_short: { id: 'privacy.unlisted.short', defaultMessage: 'Unlisted' },
   public_unlisted_short: { id: 'privacy.public_unlisted.short', defaultMessage: 'Public unlisted' },
-  private_short: { id: 'privacy.private.short', defaultMessage: 'Followers-only' },
-  direct_short: { id: 'privacy.direct.short', defaultMessage: 'Direct' },
+  login_short: { id: 'privacy.login.short', defaultMessage: 'Login only' },
+  private_short: { id: 'privacy.private.short', defaultMessage: 'Followers only' },
+  limited_short: { id: 'privacy.limited.short', defaultMessage: 'Limited menbers only' },
+  mutual_short: { id: 'privacy.mutual.short', defaultMessage: 'Mutual followers only' },
+  circle_short: { id: 'privacy.circle.short', defaultMessage: 'Circle members only' },
+  direct_short: { id: 'privacy.direct.short', defaultMessage: 'Mentioned people only' },
 });
 
 const mapStateToProps = state => {
@@ -87,11 +95,15 @@ class BoostModal extends ImmutablePureComponent {
       'public': { icon: 'globe', text: intl.formatMessage(messages.public_short) },
       'unlisted': { icon: 'unlock', text: intl.formatMessage(messages.unlisted_short) },
       'public_unlisted': { icon: 'cloud', text: intl.formatMessage(messages.public_unlisted_short) },
+      'login': { icon: 'key', text: intl.formatMessage(messages.login_short) },
       'private': { icon: 'lock', text: intl.formatMessage(messages.private_short) },
+      'limited': { icon: 'get-pocket', text: intl.formatMessage(messages.limited_short) },
+      'mutual': { icon: 'exchange', text: intl.formatMessage(messages.mutual_short) },
+      'circle': { icon: 'user-circle', text: intl.formatMessage(messages.circle_short) },
       'direct': { icon: 'at', text: intl.formatMessage(messages.direct_short) },
     };
 
-    const visibilityIcon = visibilityIconInfo[status.get('visibility_ex')];
+    const visibilityIcon = visibilityIconInfo[status.get('limited_scope') || status.get('visibility_ex')];
 
     return (
       <div className='modal-root__modal boost-modal'>

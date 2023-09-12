@@ -1,29 +1,36 @@
-import React from 'react';
-import CharacterCounter from './character_counter';
-import Button from '../../../components/button';
-import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
-import ReplyIndicatorContainer from '../containers/reply_indicator_container';
-import AutosuggestTextarea from '../../../components/autosuggest_textarea';
-import AutosuggestInput from '../../../components/autosuggest_input';
-import PollButtonContainer from '../containers/poll_button_container';
-import UploadButtonContainer from '../containers/upload_button_container';
+
 import { defineMessages, injectIntl } from 'react-intl';
-import SpoilerButtonContainer from '../containers/spoiler_button_container';
-import PrivacyDropdownContainer from '../containers/privacy_dropdown_container';
-import SearchabilityDropdownContainer from '../containers/searchability_dropdown_container';
-import ExpirationDropdownContainer from '../containers/expiration_dropdown_container';
+
+import classNames from 'classnames';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+import ImmutablePureComponent from 'react-immutable-pure-component';
+
+import { length } from 'stringz';
+
+import { Icon }  from 'mastodon/components/icon';
+
+import AutosuggestInput from '../../../components/autosuggest_input';
+import AutosuggestTextarea from '../../../components/autosuggest_textarea';
+import Button from '../../../components/button';
+import CircleSelectContainer from '../containers/circle_select_container';
 import EmojiPickerDropdown from '../containers/emoji_picker_dropdown_container';
-import PollFormContainer from '../containers/poll_form_container';
-import UploadFormContainer from '../containers/upload_form_container';
-import WarningContainer from '../containers/warning_container';
+import ExpirationDropdownContainer from '../containers/expiration_dropdown_container';
 import LanguageDropdown from '../containers/language_dropdown_container';
 import MarkdownButtonContainer from '../containers/markdown_button_container';
-import ImmutablePureComponent from 'react-immutable-pure-component';
-import { length } from 'stringz';
+import PollButtonContainer from '../containers/poll_button_container';
+import PollFormContainer from '../containers/poll_form_container';
+import PrivacyDropdownContainer from '../containers/privacy_dropdown_container';
+import ReplyIndicatorContainer from '../containers/reply_indicator_container';
+import SearchabilityDropdownContainer from '../containers/searchability_dropdown_container';
+import SpoilerButtonContainer from '../containers/spoiler_button_container';
+import UploadButtonContainer from '../containers/upload_button_container';
+import UploadFormContainer from '../containers/upload_form_container';
+import WarningContainer from '../containers/warning_container';
 import { countableText } from '../util/counter';
-import { Icon }  from 'mastodon/components/icon';
-import classNames from 'classnames';
+
+import CharacterCounter from './character_counter';
 
 const allowedAroundShortCode = '><\u0085\u0020\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000\u2028\u2029\u0009\u000a\u000b\u000c\u000d';
 
@@ -70,6 +77,7 @@ class ComposeForm extends ImmutablePureComponent {
     isInReply: PropTypes.bool,
     singleColumn: PropTypes.bool,
     lang: PropTypes.string,
+    circleId: PropTypes.string,
   };
 
   static defaultProps = {
@@ -95,11 +103,11 @@ class ComposeForm extends ImmutablePureComponent {
   };
 
   canSubmit = () => {
-    const { isSubmitting, isChangingUpload, isUploading, anyMedia } = this.props;
+    const { isSubmitting, isChangingUpload, isUploading, anyMedia, privacy, circleId } = this.props;
     const fulltext = this.getFulltextForCharacterCounting();
     const isOnlyWhitespace = fulltext.length !== 0 && fulltext.trim().length === 0;
 
-    return !(isSubmitting || isUploading || isChangingUpload || length(fulltext) > 500 || (isOnlyWhitespace && !anyMedia));
+    return !(isSubmitting || isUploading || isChangingUpload || length(fulltext) > 500 || (isOnlyWhitespace && !anyMedia) || (privacy === 'circle' && !circleId));
   };
 
   handleSubmit = (e) => {
@@ -239,7 +247,7 @@ class ComposeForm extends ImmutablePureComponent {
     } else if (this.props.privacy === 'private' || this.props.privacy === 'direct') {
       publishText = <span className='compose-form__publish-private'><Icon id='lock' /> {intl.formatMessage(messages.publish)}</span>;
     } else {
-      publishText = (this.props.privacy !== 'unlisted' && this.props.privacy !== 'public_unlisted') ? intl.formatMessage(messages.publishLoud, { publish: intl.formatMessage(messages.publish) }) : intl.formatMessage(messages.publish);
+      publishText = (this.props.privacy !== 'unlisted' && this.props.privacy !== 'public_unlisted' && this.props.privacy !== 'login') ? intl.formatMessage(messages.publishLoud, { publish: intl.formatMessage(messages.publish) }) : intl.formatMessage(messages.publish);
     }
 
     return (
@@ -285,14 +293,14 @@ class ComposeForm extends ImmutablePureComponent {
             autoFocus={autoFocus}
             lang={this.props.lang}
           >
-            <EmojiPickerDropdown onPickEmoji={this.handleEmojiPick} />
-            <ExpirationDropdownContainer onPickExpiration={this.handleExpirationPick} />
 
             <div className='compose-form__modifiers'>
               <UploadFormContainer />
               <PollFormContainer />
             </div>
           </AutosuggestTextarea>
+          <EmojiPickerDropdown onPickEmoji={this.handleEmojiPick} />
+          <ExpirationDropdownContainer onPickExpiration={this.handleExpirationPick} />
 
           <div className='compose-form__buttons-wrapper'>
             <div className='compose-form__buttons'>
@@ -310,6 +318,8 @@ class ComposeForm extends ImmutablePureComponent {
             </div>
           </div>
         </div>
+
+        <CircleSelectContainer />
 
         <div className='compose-form__publish'>
           <div className='compose-form__publish-button-wrapper'>

@@ -4,24 +4,45 @@ module Mastodon
   module Version
     module_function
 
+    def kmyblue_major
+      3
+    end
+
+    def kmyblue_minor
+      0
+    end
+
     def major
       4
     end
 
     def minor
-      1
-    end
-
-    def patch
       2
     end
 
-    def flags
-      ENV.fetch('MASTODON_VERSION_FLAGS', '')
+    def patch
+      0
     end
 
-    def suffix
-      ENV.fetch('MASTODON_VERSION_SUFFIX', '')
+    def default_prerelease
+      'beta3'
+    end
+
+    def prerelease
+      ENV['MASTODON_VERSION_PRERELEASE'].presence || default_prerelease
+    end
+
+    def to_a_of_kmyblue
+      [kmyblue_major, kmyblue_minor].compact
+    end
+
+    def to_s_of_kmyblue
+      components = [to_a_of_kmyblue.join('.')]
+      components.join
+    end
+
+    def build_metadata
+      ['kmyblue', to_s_of_kmyblue, ENV.fetch('MASTODON_VERSION_METADATA', nil)].compact.join('.')
     end
 
     def to_a
@@ -29,7 +50,14 @@ module Mastodon
     end
 
     def to_s
-      [to_a.join('.'), flags, suffix].join
+      components = [to_a.join('.')]
+      components << "-#{prerelease}" if prerelease.present?
+      components << "+#{build_metadata}" if build_metadata.present?
+      components.join
+    end
+
+    def gem_version
+      @gem_version ||= Gem::Version.new(to_s.split('+')[0])
     end
 
     def repository

@@ -59,7 +59,7 @@ class AntennasController < ApplicationController
   end
 
   def resource_params
-    params.require(:antenna).permit(:title, :list, :available, :stl, :expires_in, :with_media_only, :ignore_reblog, :keywords_raw, :exclude_keywords_raw, :domains_raw, :exclude_domains_raw, :accounts_raw, :exclude_accounts_raw, :tags_raw, :exclude_tags_raw)
+    params.require(:antenna).permit(:title, :list, :available, :insert_feeds, :stl, :expires_in, :with_media_only, :ignore_reblog, :keywords_raw, :exclude_keywords_raw, :domains_raw, :exclude_domains_raw, :accounts_raw, :exclude_accounts_raw, :tags_raw, :exclude_tags_raw)
   end
 
   def thin_resource_params

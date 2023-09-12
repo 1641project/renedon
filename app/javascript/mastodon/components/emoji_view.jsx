@@ -1,11 +1,9 @@
-import React from 'react';
-import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
-import { injectIntl } from 'react-intl';
-import emojify from '../features/emoji/emoji';
-import classNames from 'classnames';
+import { PureComponent } from 'react';
 
-export default class EmojiView extends React.PureComponent {
+import emojify from '../features/emoji/emoji';
+
+export default class EmojiView extends PureComponent {
 
   static propTypes = {
     name: PropTypes.string,

@@ -5,13 +5,12 @@ class REST::AccountSerializer < ActiveModel::Serializer
   include FormattingHelper
 
   attributes :id, :username, :acct, :display_name, :locked, :bot, :discoverable, :group, :created_at,
-             :note, :url, :avatar, :avatar_static, :header, :header_static, :searchability, :subscribable,
-             :followers_count, :following_count, :statuses_count, :last_status_at, :other_settings,
-             :noindex
+             :note, :url, :uri, :avatar, :avatar_static, :header, :header_static, :subscribable,
+             :followers_count, :following_count, :statuses_count, :last_status_at, :other_settings, :noindex
 
   has_one :moved_to_account, key: :moved, serializer: REST::AccountSerializer, if: :moved_and_not_nested?
 
-  has_many :emojis, serializer: REST::CustomEmojiSerializer
+  has_many :emojis, serializer: REST::CustomEmojiSlimSerializer
 
   attribute :suspended, if: :suspended?
   attribute :silenced, key: :limited, if: :silenced?
@@ -64,6 +63,10 @@ class REST::AccountSerializer < ActiveModel::Serializer
 
   def url
     ActivityPub::TagManager.instance.url_for(object)
+  end
+
+  def uri
+    ActivityPub::TagManager.instance.uri_for(object)
   end
 
   def avatar

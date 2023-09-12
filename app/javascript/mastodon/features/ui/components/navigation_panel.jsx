@@ -1,34 +1,44 @@
-import React from 'react';
 import PropTypes from 'prop-types';
+import { Component } from 'react';
+
 import { defineMessages, injectIntl } from 'react-intl';
+
 import { Link } from 'react-router-dom';
+
 import { WordmarkLogo } from 'mastodon/components/logo';
-import { timelinePreview, showTrends } from 'mastodon/initial_state';
+import NavigationPortal from 'mastodon/components/navigation_portal';
+import { enableDtlMenu, timelinePreview, trendsEnabled, dtlTag } from 'mastodon/initial_state';
+import { transientSingleColumn } from 'mastodon/is_mobile';
+
 import ColumnLink from './column_link';
 import DisabledAccountBanner from './disabled_account_banner';
 import FollowRequestsColumnLink from './follow_requests_column_link';
 import ListPanel from './list_panel';
 import NotificationsCounterIcon from './notifications_counter_icon';
 import SignInBanner from './sign_in_banner';
-import NavigationPortal from 'mastodon/components/navigation_portal';
 
 const messages = defineMessages({
   home: { id: 'tabs_bar.home', defaultMessage: 'Home' },
   notifications: { id: 'tabs_bar.notifications', defaultMessage: 'Notifications' },
   explore: { id: 'explore.title', defaultMessage: 'Explore' },
-  local: { id: 'tabs_bar.local_timeline', defaultMessage: 'Local' },
-  federated: { id: 'tabs_bar.federated_timeline', defaultMessage: 'Federated' },
+  local: { id: 'column.local', defaultMessage: 'Local' },
+  deepLocal: { id: 'column.deep_local', defaultMessage: 'Deep' },
+  firehose: { id: 'column.firehose', defaultMessage: 'Live feeds' },
   direct: { id: 'navigation_bar.direct', defaultMessage: 'Private mentions' },
-  favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favourites' },
+  favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   lists: { id: 'navigation_bar.lists', defaultMessage: 'Lists' },
+  antennas: { id: 'navigation_bar.antennas', defaultMessage: 'Antennas' },
+  circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   preferences: { id: 'navigation_bar.preferences', defaultMessage: 'Preferences' },
   followsAndFollowers: { id: 'navigation_bar.follows_and_followers', defaultMessage: 'Follows and followers' },
   about: { id: 'navigation_bar.about', defaultMessage: 'About' },
   search: { id: 'navigation_bar.search', defaultMessage: 'Search' },
+  advancedInterface: { id: 'navigation_bar.advanced_interface', defaultMessage: 'Open in advanced web interface' },
+  openedInClassicInterface: { id: 'navigation_bar.opened_in_classic_interface', defaultMessage: 'Posts, accounts, and other specific pages are opened by default in the classic web interface.' },
 });
 
-class NavigationPanel extends React.Component {
+class NavigationPanel extends Component {
 
   static contextTypes = {
     router: PropTypes.object.isRequired,
@@ -39,35 +49,90 @@ class NavigationPanel extends React.Component {
     intl: PropTypes.object.isRequired,
   };
 
+  isFirehoseActive = (match, location) => {
+    return (match || location.pathname.startsWith('/public')) && !location.pathname.endsWith('/fixed');
+  };
+
+  isAntennasActive = (match, location) => {
+    return (match || location.pathname.startsWith('/antennast'));
+  };
+
   render () {
     const { intl } = this.props;
     const { signedIn, disabledAccountId } = this.context.identity;
+
+    const explorer = (trendsEnabled ? (
+      <ColumnLink transparent to='/explore' icon='hashtag' text={intl.formatMessage(messages.explore)} />
+    ) : (
+      <ColumnLink transparent to='/search' icon='search' text={intl.formatMessage(messages.search)} />
+    ));
 
     return (
       <div className='navigation-panel'>
         <div className='navigation-panel__logo'>
           <Link to='/' className='column-link column-link--logo'><WordmarkLogo /></Link>
-          <hr />
+
+          {transientSingleColumn ? (
+            <div class='switch-to-advanced'>
+              {intl.formatMessage(messages.openedInClassicInterface)}
+              {" "}
+              <a href={`/deck${location.pathname}`} class='switch-to-advanced__toggle'>
+                {intl.formatMessage(messages.advancedInterface)}
+              </a>
+            </div>
+          ) : (
+            <hr />
+          )}
         </div>
 
         {signedIn && (
-          <React.Fragment>
+          <>
             <ColumnLink transparent to='/home' icon='home' text={intl.formatMessage(messages.home)} />
             <ColumnLink transparent to='/notifications' icon={<NotificationsCounterIcon className='column-link__icon' />} text={intl.formatMessage(messages.notifications)} />
-            <FollowRequestsColumnLink />
-          </React.Fragment>
+            <ColumnLink transparent to='/public/local/fixed' icon='users' text={intl.formatMessage(messages.local)} />
+          </>
         )}
 
-        {showTrends ? (
-          <ColumnLink transparent to='/explore' icon='hashtag' text={intl.formatMessage(messages.explore)} />
-        ) : (
-          <ColumnLink transparent to='/search' icon='search' text={intl.formatMessage(messages.search)} />
+        {signedIn && enableDtlMenu && dtlTag && (
+          <ColumnLink transparent to={`/tags/${dtlTag}`} icon='users' text={intl.formatMessage(messages.deepLocal)} />
         )}
 
-        {(signedIn || timelinePreview) && (
+        {!signedIn && explorer}
+
+        {signedIn && (
+          <ColumnLink transparent to='/public' isActive={this.isFirehoseActive} icon='globe' text={intl.formatMessage(messages.firehose)} />
+        )}
+
+        {(!signedIn && timelinePreview) && (
+          <ColumnLink transparent to='/public/local' isActive={this.isFirehoseActive} icon='globe' text={intl.formatMessage(messages.firehose)} />
+        )}
+
+        {signedIn && (
           <>
-            <ColumnLink transparent to='/public/local' icon='users' text={intl.formatMessage(messages.local)} />
-            <ColumnLink transparent exact to='/public' icon='globe' text={intl.formatMessage(messages.federated)} />
+            <ListPanel />
+            <hr />
+          </>
+        )}
+
+        {signedIn && (
+          <>
+            <ColumnLink transparent to='/lists' icon='list-ul' text={intl.formatMessage(messages.lists)} />
+            <ColumnLink transparent to='/antennasw' icon='wifi' text={intl.formatMessage(messages.antennas)} isActive={this.isAntennasActive} />
+            <ColumnLink transparent to='/circles' icon='user-circle' text={intl.formatMessage(messages.circles)} />
+            <FollowRequestsColumnLink />
+            <ColumnLink transparent to='/conversations' icon='at' text={intl.formatMessage(messages.direct)} />
+          </>
+        )}
+
+        {signedIn && explorer}
+
+        {signedIn && (
+          <>
+            <ColumnLink transparent to='/bookmark_categories' icon='bookmark' text={intl.formatMessage(messages.bookmarks)} />
+            <ColumnLink transparent to='/favourites' icon='star' text={intl.formatMessage(messages.favourites)} />
+            <hr />
+
+            <ColumnLink transparent href='/settings/preferences' icon='cog' text={intl.formatMessage(messages.preferences)} />
           </>
         )}
 
@@ -76,21 +141,6 @@ class NavigationPanel extends React.Component {
             <hr />
             { disabledAccountId ? <DisabledAccountBanner /> : <SignInBanner /> }
           </div>
-        )}
-
-        {signedIn && (
-          <React.Fragment>
-            <ColumnLink transparent to='/conversations' icon='at' text={intl.formatMessage(messages.direct)} />
-            <ColumnLink transparent to='/bookmarks' icon='bookmark' text={intl.formatMessage(messages.bookmarks)} />
-            <ColumnLink transparent to='/favourites' icon='star' text={intl.formatMessage(messages.favourites)} />
-            <ColumnLink transparent to='/lists' icon='list-ul' text={intl.formatMessage(messages.lists)} />
-
-            <ListPanel />
-
-            <hr />
-
-            <ColumnLink transparent href='/settings/preferences' icon='cog' text={intl.formatMessage(messages.preferences)} />
-          </React.Fragment>
         )}
 
         <div className='navigation-panel__legal'>

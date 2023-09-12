@@ -1,7 +1,8 @@
 import { connect } from 'react-redux';
-import ExpirationDropdown from '../components/expiration_dropdown';
+
 import { openModal, closeModal } from '../../../actions/modal';
 import { isUserTouching } from '../../../is_mobile';
+import ExpirationDropdown from '../components/expiration_dropdown';
 
 const mapStateToProps = state => ({
   value: state.getIn(['compose', 'privacy']),
@@ -16,8 +17,14 @@ const mapDispatchToProps = (dispatch, { onPickExpiration }) => ({
   },
 
   isUserTouching,
-  onModalOpen: props => dispatch(openModal('ACTIONS', props)),
-  onModalClose: () => dispatch(closeModal()),
+  onModalOpen: props => dispatch(openModal({
+    modalType: 'ACTIONS',
+    modalProps: props,
+  })),
+  onModalClose: () => dispatch(closeModal({
+    modalType: undefined,
+    ignoreFocus: false,
+  })),
 
 });
 

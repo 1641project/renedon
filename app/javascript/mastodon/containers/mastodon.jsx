@@ -1,21 +1,24 @@
 import PropTypes from 'prop-types';
-import React from 'react';
+import { PureComponent } from 'react';
+
 import { Helmet } from 'react-helmet';
-import { IntlProvider, addLocaleData } from 'react-intl';
+import { Route } from 'react-router-dom';
+
 import { Provider as ReduxProvider } from 'react-redux';
-import { BrowserRouter, Route } from 'react-router-dom';
+
 import { ScrollContext } from 'react-router-scroll-4';
-import { store } from 'mastodon/store';
-import UI from 'mastodon/features/ui';
+
+import { fetchCircles } from 'mastodon/actions/circles';
 import { fetchCustomEmojis } from 'mastodon/actions/custom_emojis';
+import { fetchReactionDeck } from 'mastodon/actions/reaction_deck';
 import { hydrateStore } from 'mastodon/actions/store';
 import { connectUserStream } from 'mastodon/actions/streaming';
 import ErrorBoundary from 'mastodon/components/error_boundary';
+import { Router } from 'mastodon/components/router';
+import UI from 'mastodon/features/ui';
 import initialState, { title as siteTitle } from 'mastodon/initial_state';
-import { getLocale } from 'mastodon/locales';
-
-const { localeData, messages } = getLocale();
-addLocaleData(localeData);
+import { IntlProvider } from 'mastodon/locales';
+import { store } from 'mastodon/store';
 
 const title = process.env.NODE_ENV === 'production' ? siteTitle : `${siteTitle} (Dev)`;
 
@@ -24,6 +27,8 @@ const hydrateAction = hydrateStore(initialState);
 store.dispatch(hydrateAction);
 if (initialState.meta.me) {
   store.dispatch(fetchCustomEmojis());
+  store.dispatch(fetchReactionDeck());
+  store.dispatch(fetchCircles());
 }
 
 const createIdentityContext = state => ({
@@ -34,11 +39,7 @@ const createIdentityContext = state => ({
   permissions: state.role ? state.role.permissions : 0,
 });
 
-export default class Mastodon extends React.PureComponent {
-
-  static propTypes = {
-    locale: PropTypes.string.isRequired,
-  };
+export default class Mastodon extends PureComponent {
 
   static childContextTypes = {
     identity: PropTypes.shape({
@@ -75,17 +76,15 @@ export default class Mastodon extends React.PureComponent {
   }
 
   render () {
-    const { locale } = this.props;
-
     return (
-      <IntlProvider locale={locale} messages={messages}>
+      <IntlProvider>
         <ReduxProvider store={store}>
           <ErrorBoundary>
-            <BrowserRouter>
+            <Router>
               <ScrollContext shouldUpdateScroll={this.shouldUpdateScroll}>
                 <Route path='/' component={UI} />
               </ScrollContext>
-            </BrowserRouter>
+            </Router>
 
             <Helmet defaultTitle={title} titleTemplate={`%s - ${title}`} />
           </ErrorBoundary>

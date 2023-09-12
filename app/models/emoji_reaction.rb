@@ -28,12 +28,20 @@ class EmojiReaction < ApplicationRecord
 
   has_one :notification, as: :activity, dependent: :destroy
 
-  validate :status_same_emoji_reaction
   validate :status_emoji_reactions_count
+  validates_with EmojiReactionValidator
 
   after_create :refresh_cache
   after_destroy :refresh_cache
   after_destroy :invalidate_cleanup_info
+
+  def custom_emoji?
+    custom_emoji.present?
+  end
+
+  def remote_custom_emoji?
+    custom_emoji? && !custom_emoji.local?
+  end
 
   private
 

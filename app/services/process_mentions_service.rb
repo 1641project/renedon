@@ -7,8 +7,10 @@ class ProcessMentionsService < BaseService
   # and create local mention pointers
   # @param [Status] status
   # @param [Boolean] save_records Whether to save records in database
-  def call(status, save_records: true)
+  def call(status, limited_type: '', circle: nil, save_records: true)
     @status = status
+    @limited_type = limited_type
+    @circle = circle
     @save_records = save_records
 
     return unless @status.local?
@@ -62,13 +64,16 @@ class ProcessMentionsService < BaseService
       "@#{mentioned_account.acct}"
     end
 
+    process_mutual! if @limited_type == :mutual
+    process_circle! if @limited_type == :circle
+
     @status.save! if @save_records
   end
 
   def assign_mentions!
     # Make sure we never mention blocked accounts
     unless @current_mentions.empty?
-      mentioned_domains = @current_mentions.map { |m| m.account.domain }.compact.uniq
+      mentioned_domains = @current_mentions.filter_map { |m| m.account.domain }.uniq
       blocked_domains   = Set.new(mentioned_domains.empty? ? [] : AccountDomainBlock.where(account_id: @status.account_id, domain: mentioned_domains))
       mentioned_account_ids = @current_mentions.map(&:account_id)
       blocked_account_ids = Set.new(@status.account.block_relationships.where(target_account_id: mentioned_account_ids).pluck(:target_account_id))
@@ -91,5 +96,21 @@ class ProcessMentionsService < BaseService
 
   def mention_undeliverable?(mentioned_account)
     mentioned_account.nil? || (!mentioned_account.local? && !mentioned_account.activitypub?)
+  end
+
+  def process_mutual!
+    mentioned_account_ids = @current_mentions.map(&:account_id)
+
+    @status.account.mutuals.reorder(nil).find_each do |target_account|
+      @current_mentions << @status.mentions.new(silent: true, account: target_account) unless mentioned_account_ids.include?(target_account.id)
+    end
+  end
+
+  def process_circle!
+    mentioned_account_ids = @current_mentions.map(&:account_id)
+
+    @circle.accounts.find_each do |target_account|
+      @current_mentions << @status.mentions.new(silent: true, account: target_account) unless mentioned_account_ids.include?(target_account.id)
+    end
   end
 end

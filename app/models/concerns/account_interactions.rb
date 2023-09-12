@@ -211,6 +211,10 @@ module AccountInteractions
     other_account.following?(self)
   end
 
+  def mutual?(other_account)
+    following?(other_account) && followed_by?(other_account)
+  end
+
   def blocking?(other_account)
     block_relationships.where(target_account: other_account).exists?
   end
@@ -265,7 +269,7 @@ module AccountInteractions
 
   def status_matches_filters(status)
     active_filters = CustomFilter.cached_filters_for(id)
-    CustomFilter.apply_cached_filters(active_filters, status)
+    CustomFilter.apply_cached_filters(active_filters, status, following?(status.account))
   end
 
   def followers_for_local_distribution
@@ -301,6 +305,10 @@ module AccountInteractions
       end
       digest.unpack1('H*')
     end
+  end
+
+  def mutuals
+    followers.merge(Account.where(id: following))
   end
 
   def relations_map(account_ids, domains = nil, **options)

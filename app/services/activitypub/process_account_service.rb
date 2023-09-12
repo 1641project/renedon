@@ -8,6 +8,8 @@ class ActivityPub::ProcessAccountService < BaseService
 
   SUBDOMAINS_RATELIMIT = 10
   DISCOVERIES_PER_REQUEST = 400
+  SCAN_SEARCHABILITY_RE = /\[searchability:(public|followers|reactors|private)\]/
+  SCAN_SEARCHABILITY_FEDIBIRD_RE = /searchable_by_(all_users|followers_only|reacted_users_only|nobody)/
 
   # Should be called with confirmed valid JSON
   # and WebFinger-resolved username and domain
@@ -20,6 +22,8 @@ class ActivityPub::ProcessAccountService < BaseService
     @username    = username
     @domain      = TagManager.instance.normalize_domain(domain)
     @collections = {}
+
+    return unless valid_account?
 
     # The key does not need to be unguessable, it just needs to be somewhat unique
     @options[:request_id] ||= "#{Time.now.utc.to_i}-#{username}@#{domain}"
@@ -42,6 +46,7 @@ class ActivityPub::ProcessAccountService < BaseService
         end
 
         create_account
+        fetch_instance_info
       end
 
       update_account
@@ -77,9 +82,12 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.suspended_at      = domain_block.created_at if auto_suspend?
     @account.suspension_origin = :local if auto_suspend?
     @account.silenced_at       = domain_block.created_at if auto_silence?
-    @account.searchability     = :private  # not null
+    @account.searchability     = :direct   # not null
     @account.dissubscribable   = false     # not null
-    @account.save
+
+    set_immediate_protocol_attributes!
+
+    @account.save!
   end
 
   def update_account
@@ -115,9 +123,17 @@ class ActivityPub::ProcessAccountService < BaseService
     @account.fields                  = property_values || {}
     @account.also_known_as           = as_array(@json['alsoKnownAs'] || []).map { |item| value_or_id(item) }
     @account.discoverable            = @json['discoverable'] || false
+    @account.indexable               = @json['indexable'] || false
     @account.searchability           = searchability_from_audience
     @account.dissubscribable         = !subscribable(@account.note)
     @account.settings                = other_settings
+    @account.memorial                = @json['memorial'] || false
+  end
+
+  def valid_account?
+    display_name = @json['name']
+    note = @json['summary']
+    !Admin::NgWord.reject?(display_name) && !Admin::NgWord.reject?(note)
   end
 
   def set_fetchable_key!
@@ -194,6 +210,10 @@ class ActivityPub::ProcessAccountService < BaseService
     AccountMergingWorker.perform_async(@account.id)
   end
 
+  def fetch_instance_info
+    ActivityPub::FetchInstanceInfoWorker.perform_async(@account.domain) unless InstanceInfo.exists?(domain: @account.domain)
+  end
+
   def actor_type
     if @json['type'].is_a?(Array)
       @json['type'].find { |type| ActivityPub::FetchRemoteAccountService::SUPPORTED_TYPES.include?(type) }
@@ -241,15 +261,51 @@ class ActivityPub::ProcessAccountService < BaseService
   end
 
   def searchability_from_audience
-    return :private if audience_searchable_by.nil?
+    if audience_searchable_by.nil?
+      bio = searchability_from_bio
+      return bio unless bio.nil?
+
+      return misskey_software? ? :public : :direct
+    end
 
     if audience_searchable_by.any? { |uri| ActivityPub::TagManager.instance.public_collection?(uri) }
       :public
     elsif audience_searchable_by.include?(@account.followers_url)
-      :unlisted    # Followers only in kmyblue (generics: private)
+      :private
+    elsif audience_searchable_by.include?('as:Limited')
+      :limited
     else
-      :private     # Reaction only in kmyblue (generics: direct)
+      :direct
     end
+  end
+
+  def searchability_from_bio
+    note = @json['summary'] || ''
+    return nil if note.blank?
+
+    searchability_bio = note.scan(SCAN_SEARCHABILITY_FEDIBIRD_RE).first || note.scan(SCAN_SEARCHABILITY_RE).first
+    return nil unless searchability_bio
+
+    searchability = searchability_bio[0]
+    return nil if searchability.nil?
+
+    searchability = :public  if %w(public all_users).include?(searchability)
+    searchability = :private if %w(followers followers_only).include?(searchability)
+    searchability = :direct  if %w(reactors reacted_users_only).include?(searchability)
+    searchability = :limited if %w(private nobody).include?(searchability)
+
+    searchability
+  end
+
+  def instance_info
+    @instance_info ||= InstanceInfo.find_by(domain: @domain)
+  end
+
+  def misskey_software?
+    info = instance_info
+    return false if info.nil?
+
+    %w(misskey calckey firefish).include?(info.software)
   end
 
   def subscribable_by
@@ -377,12 +433,14 @@ class ActivityPub::ProcessAccountService < BaseService
     shortcode = tag['name'].delete(':')
     image_url = tag['icon']['url']
     uri       = tag['id']
+    sensitive = (tag['isSensitive'].presence || false)
+    license   = tag['license']
     updated   = tag['updated']
     emoji     = CustomEmoji.find_by(shortcode: shortcode, domain: @account.domain)
 
     return unless emoji.nil? || image_url != emoji.image_remote_url || (updated && updated >= emoji.updated_at)
 
-    emoji ||= CustomEmoji.new(domain: @account.domain, shortcode: shortcode, uri: uri)
+    emoji ||= CustomEmoji.new(domain: @account.domain, shortcode: shortcode, uri: uri, is_sensitive: sensitive, license: license)
     emoji.image_remote_url = image_url
     emoji.save
   end

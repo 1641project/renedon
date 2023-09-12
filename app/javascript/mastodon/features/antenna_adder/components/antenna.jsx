@@ -1,16 +1,19 @@
-import React from 'react';
 import PropTypes from 'prop-types';
-import { connect } from 'react-redux';
-import ImmutablePureComponent from 'react-immutable-pure-component';
-import ImmutablePropTypes from 'react-immutable-proptypes';
-import { IconButton } from '../../../components/icon_button';
+
 import { defineMessages, injectIntl } from 'react-intl';
-import { removeFromAntennaAdder, addToAntennaAdder } from '../../../actions/antennas';
-import { Icon } from 'mastodon/components/icon';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+import ImmutablePureComponent from 'react-immutable-pure-component';
+import { connect } from 'react-redux';
+
+import { Icon }  from 'mastodon/components/icon';
+
+import { removeFromAntennaAdder, addToAntennaAdder, removeExcludeFromAntennaAdder, addExcludeToAntennaAdder } from '../../../actions/antennas';
+import { IconButton }  from '../../../components/icon_button';
 
 const messages = defineMessages({
-  remove: { id: 'lists.account.remove', defaultMessage: 'Remove from list' },
-  add: { id: 'lists.account.add', defaultMessage: 'Add to list' },
+  remove: { id: 'antennas.account.remove', defaultMessage: 'Remove from antenna' },
+  add: { id: 'antennas.account.add', defaultMessage: 'Add to antenna' },
 });
 
 const MapStateToProps = (state, { antennaId, added }) => ({
@@ -21,15 +24,20 @@ const MapStateToProps = (state, { antennaId, added }) => ({
 const mapDispatchToProps = (dispatch, { antennaId }) => ({
   onRemove: () => dispatch(removeFromAntennaAdder(antennaId)),
   onAdd: () => dispatch(addToAntennaAdder(antennaId)),
+  onExcludeRemove: () => dispatch(removeExcludeFromAntennaAdder(antennaId)),
+  onExcludeAdd: () => dispatch(addExcludeToAntennaAdder(antennaId)),
 });
 
 class Antenna extends ImmutablePureComponent {
 
   static propTypes = {
     antenna: ImmutablePropTypes.map.isRequired,
+    isExclude: PropTypes.bool.isRequired,
     intl: PropTypes.object.isRequired,
     onRemove: PropTypes.func.isRequired,
     onAdd: PropTypes.func.isRequired,
+    onExcludeRemove: PropTypes.func.isRequired,
+    onExcludeAdd: PropTypes.func.isRequired,
     added: PropTypes.bool,
   };
 
@@ -37,15 +45,31 @@ class Antenna extends ImmutablePureComponent {
     added: false,
   };
 
+  handleRemove = () => {
+    if (this.props.isExclude) {
+      this.props.onExcludeRemove();
+    } else {
+      this.props.onRemove();
+    }
+  };
+
+  handleAdd = () => {
+    if (this.props.isExclude) {
+      this.props.onExcludeAdd();
+    } else {
+      this.props.onAdd();
+    }
+  };
+
   render () {
-    const { antenna, intl, onRemove, onAdd, added } = this.props;
+    const { antenna, intl, added } = this.props;
 
     let button;
 
     if (added) {
-      button = <IconButton icon='times' title={intl.formatMessage(messages.remove)} onClick={onRemove} />;
+      button = <IconButton icon='times' title={intl.formatMessage(messages.remove)} onClick={this.handleRemove} />;
     } else {
-      button = <IconButton icon='plus' title={intl.formatMessage(messages.add)} onClick={onAdd} />;
+      button = <IconButton icon='plus' title={intl.formatMessage(messages.add)} onClick={this.handleAdd} />;
     }
 
     return (

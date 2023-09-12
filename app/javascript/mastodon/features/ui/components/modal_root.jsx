@@ -1,18 +1,9 @@
-import React from 'react';
 import PropTypes from 'prop-types';
-import { getScrollbarWidth } from 'mastodon/utils/scrollbar';
+import { PureComponent } from 'react';
+
+import { Helmet } from 'react-helmet';
+
 import Base from 'mastodon/components/modal_root';
-import BundleContainer from '../containers/bundle_container';
-import BundleModalError from './bundle_modal_error';
-import ModalLoading from './modal_loading';
-import ActionsModal from './actions_modal';
-import MediaModal from './media_modal';
-import VideoModal from './video_modal';
-import BoostModal from './boost_modal';
-import AudioModal from './audio_modal';
-import ConfirmationModal from './confirmation_modal';
-import FocalPointModal from './focal_point_modal';
-import ImageModal from './image_modal';
 import {
   MuteModal,
   BlockModal,
@@ -20,16 +11,33 @@ import {
   EmbedModal,
   ListEditor,
   ListAdder,
+  AntennaEditor,
   AntennaAdder,
+  CircleEditor,
+  CircleAdder,
+  BookmarkCategoryAdder,
   CompareHistoryModal,
   FilterModal,
   InteractionModal,
   SubscribedLanguagesModal,
   ClosedRegistrationsModal,
 } from 'mastodon/features/ui/util/async-components';
-import { Helmet } from 'react-helmet';
+import { getScrollbarWidth } from 'mastodon/utils/scrollbar';
 
-const MODAL_COMPONENTS = {
+import BundleContainer from '../containers/bundle_container';
+
+import ActionsModal from './actions_modal';
+import AudioModal from './audio_modal';
+import BoostModal from './boost_modal';
+import BundleModalError from './bundle_modal_error';
+import ConfirmationModal from './confirmation_modal';
+import FocalPointModal from './focal_point_modal';
+import ImageModal from './image_modal';
+import MediaModal from './media_modal';
+import ModalLoading from './modal_loading';
+import VideoModal from './video_modal';
+
+export const MODAL_COMPONENTS = {
   'MEDIA': () => Promise.resolve({ default: MediaModal }),
   'VIDEO': () => Promise.resolve({ default: VideoModal }),
   'AUDIO': () => Promise.resolve({ default: AudioModal }),
@@ -42,9 +50,13 @@ const MODAL_COMPONENTS = {
   'ACTIONS': () => Promise.resolve({ default: ActionsModal }),
   'EMBED': EmbedModal,
   'LIST_EDITOR': ListEditor,
+  'ANTENNA_EDITOR': AntennaEditor,
+  'CIRCLE_EDITOR': CircleEditor,
   'FOCAL_POINT': () => Promise.resolve({ default: FocalPointModal }),
   'LIST_ADDER': ListAdder,
   'ANTENNA_ADDER': AntennaAdder,
+  'CIRCLE_ADDER': CircleAdder,
+  'BOOKMARK_CATEGORY_ADDER': BookmarkCategoryAdder,
   'COMPARE_HISTORY': CompareHistoryModal,
   'FILTER': FilterModal,
   'SUBSCRIBED_LANGUAGES': SubscribedLanguagesModal,
@@ -52,7 +64,7 @@ const MODAL_COMPONENTS = {
   'CLOSED_REGISTRATIONS': ClosedRegistrationsModal,
 };
 
-export default class ModalRoot extends React.PureComponent {
+export default class ModalRoot extends PureComponent {
 
   static propTypes = {
     type: PropTypes.string,
@@ -95,14 +107,7 @@ export default class ModalRoot extends React.PureComponent {
 
   handleClose = (ignoreFocus = false) => {
     const { onClose } = this.props;
-    let message = null;
-    try {
-      message = this._modal?.getWrappedInstance?.().getCloseConfirmationMessage?.();
-    } catch (_) {
-      // injectIntl defines `getWrappedInstance` but errors out if `withRef`
-      // isn't set.
-      // This would be much smoother with react-intl 3+ and `forwardRef`.
-    }
+    const message = this._modal?.getCloseConfirmationMessage?.();
     onClose(message, ignoreFocus);
   };
 
@@ -120,7 +125,10 @@ export default class ModalRoot extends React.PureComponent {
         {visible && (
           <>
             <BundleContainer fetchComponent={MODAL_COMPONENTS[type]} loading={this.renderLoading(type)} error={this.renderError} renderDelay={200}>
-              {(SpecificComponent) => <SpecificComponent {...props} onChangeBackgroundColor={this.setBackgroundColor} onClose={this.handleClose} ref={this.setModalRef} />}
+              {(SpecificComponent) => {
+                const ref = typeof SpecificComponent !== 'function' ? this.setModalRef : undefined;
+                return <SpecificComponent {...props} onChangeBackgroundColor={this.setBackgroundColor} onClose={this.handleClose} ref={ref} />
+              }}
             </BundleContainer>
 
             <Helmet>

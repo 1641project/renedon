@@ -1,11 +1,16 @@
-import { SETTING_CHANGE, SETTING_SAVE } from '../actions/settings';
-import { NOTIFICATIONS_FILTER_SET } from '../actions/notifications';
+import { Map as ImmutableMap, fromJS } from 'immutable';
+
+import { ANTENNA_DELETE_SUCCESS, ANTENNA_FETCH_FAIL } from 'mastodon/actions/antennas';
+import { BOOKMARK_CATEGORY_DELETE_SUCCESS, BOOKMARK_CATEGORY_FETCH_FAIL } from 'mastodon/actions/bookmark_categories';
+import { CIRCLE_DELETE_SUCCESS, CIRCLE_FETCH_FAIL } from 'mastodon/actions/circles';
+
 import { COLUMN_ADD, COLUMN_REMOVE, COLUMN_MOVE, COLUMN_PARAMS_CHANGE } from '../actions/columns';
-import { STORE_HYDRATE } from '../actions/store';
 import { EMOJI_USE } from '../actions/emojis';
 import { LANGUAGE_USE } from '../actions/languages';
 import { LIST_DELETE_SUCCESS, LIST_FETCH_FAIL } from '../actions/lists';
-import { Map as ImmutableMap, fromJS } from 'immutable';
+import { NOTIFICATIONS_FILTER_SET } from '../actions/notifications';
+import { SETTING_CHANGE, SETTING_SAVE } from '../actions/settings';
+import { STORE_HYDRATE } from '../actions/store';
 import { uuid } from '../uuid';
 
 const initialState = ImmutableMap({
@@ -38,6 +43,8 @@ const initialState = ImmutableMap({
       poll: false,
       status: false,
       update: false,
+      emoji_reaction: false,
+      status_reference: false,
       'admin.sign_up': false,
       'admin.report': false,
     }),
@@ -60,6 +67,8 @@ const initialState = ImmutableMap({
       poll: true,
       status: true,
       update: true,
+      emoji_reaction: true,
+      status_reference: true,
       'admin.sign_up': true,
       'admin.report': true,
     }),
@@ -73,9 +82,15 @@ const initialState = ImmutableMap({
       poll: true,
       status: true,
       update: true,
+      emoji_reaction: true,
+      status_reference: true,
       'admin.sign_up': true,
       'admin.report': true,
     }),
+  }),
+
+  firehose: ImmutableMap({
+    onlyMedia: false,
   }),
 
   community: ImmutableMap({
@@ -137,6 +152,12 @@ const updateFrequentLanguages = (state, language) => state.update('frequentlyUse
 
 const filterDeadListColumns = (state, listId) => state.update('columns', columns => columns.filterNot(column => column.get('id') === 'LIST' && column.get('params').get('id') === listId));
 
+const filterDeadBookmarkCategoryColumns = (state, bookmarkCategoryId) => state.update('columns', columns => columns.filterNot(column => column.get('id') === 'BOOKMARKS_EX' && column.get('params').get('id') === bookmarkCategoryId));
+
+const filterDeadAntennaColumns = (state, antennaId) => state.update('columns', columns => columns.filterNot(column => (column.get('id') === 'ANTENNA' || column.get('id') === 'ANTENNA_TIMELINE') && column.get('params').get('id') === antennaId));
+
+const filterDeadCircleColumns = (state, circleId) => state.update('columns', columns => columns.filterNot(column => column.get('id') === 'CIRCLE' && column.get('params').get('id') === circleId));
+
 export default function settings(state = initialState, action) {
   switch(action.type) {
   case STORE_HYDRATE:
@@ -168,6 +189,18 @@ export default function settings(state = initialState, action) {
     return action.error.response.status === 404 ? filterDeadListColumns(state, action.id) : state;
   case LIST_DELETE_SUCCESS:
     return filterDeadListColumns(state, action.id);
+  case BOOKMARK_CATEGORY_FETCH_FAIL:
+    return action.error.response.status === 404 ? filterDeadBookmarkCategoryColumns(state, action.id) : state;
+  case BOOKMARK_CATEGORY_DELETE_SUCCESS:
+    return filterDeadBookmarkCategoryColumns(state, action.id);
+  case ANTENNA_FETCH_FAIL:
+    return action.error.response.status === 404 ? filterDeadAntennaColumns(state, action.id) : state;
+  case ANTENNA_DELETE_SUCCESS:
+    return filterDeadAntennaColumns(state, action.id);
+  case CIRCLE_FETCH_FAIL:
+    return action.error.response.status === 404 ? filterDeadCircleColumns(state, action.id) : state;
+  case CIRCLE_DELETE_SUCCESS:
+    return filterDeadCircleColumns(state, action.id);
   default:
     return state;
   }

@@ -1,20 +1,25 @@
-import React from 'react';
-import Column from 'mastodon/components/column';
-import ColumnHeader from 'mastodon/components/column_header';
-import ColumnLink from '../ui/components/column_link';
-import ColumnSubheading from '../ui/components/column_subheading';
-import { defineMessages, injectIntl } from 'react-intl';
-import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
+
+import { defineMessages, injectIntl } from 'react-intl';
+
+import { Helmet } from 'react-helmet';
+
+import { List as ImmutableList } from 'immutable';
 import ImmutablePropTypes from 'react-immutable-proptypes';
 import ImmutablePureComponent from 'react-immutable-pure-component';
-import { me, showTrends } from '../../initial_state';
+import { connect } from 'react-redux';
+
 import { fetchFollowRequests } from 'mastodon/actions/accounts';
-import { List as ImmutableList } from 'immutable';
-import NavigationContainer from '../compose/containers/navigation_container';
+import Column from 'mastodon/components/column';
+import ColumnHeader from 'mastodon/components/column_header';
 import LinkFooter from 'mastodon/features/ui/components/link_footer';
+
+import { me, showTrends } from '../../initial_state';
+import NavigationContainer from '../compose/containers/navigation_container';
+import ColumnLink from '../ui/components/column_link';
+import ColumnSubheading from '../ui/components/column_subheading';
+
 import TrendsContainer from './containers/trends_container';
-import { Helmet } from 'react-helmet';
 
 const messages = defineMessages({
   home_timeline: { id: 'tabs_bar.home', defaultMessage: 'Home' },
@@ -27,12 +32,14 @@ const messages = defineMessages({
   bookmarks: { id: 'navigation_bar.bookmarks', defaultMessage: 'Bookmarks' },
   preferences: { id: 'navigation_bar.preferences', defaultMessage: 'Preferences' },
   follow_requests: { id: 'navigation_bar.follow_requests', defaultMessage: 'Follow requests' },
-  favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favourites' },
+  favourites: { id: 'navigation_bar.favourites', defaultMessage: 'Favorites' },
   blocks: { id: 'navigation_bar.blocks', defaultMessage: 'Blocked users' },
-  domain_blocks: { id: 'navigation_bar.domain_blocks', defaultMessage: 'Hidden domains' },
+  domain_blocks: { id: 'navigation_bar.domain_blocks', defaultMessage: 'Blocked domains' },
   mutes: { id: 'navigation_bar.mutes', defaultMessage: 'Muted users' },
   pins: { id: 'navigation_bar.pins', defaultMessage: 'Pinned posts' },
   lists: { id: 'navigation_bar.lists', defaultMessage: 'Lists' },
+  antennas: { id: 'navigation_bar.antennas', defaultMessage: 'Antennas' },
+  circles: { id: 'navigation_bar.circles', defaultMessage: 'Circles' },
   discover: { id: 'navigation_bar.discover', defaultMessage: 'Discover' },
   personal: { id: 'navigation_bar.personal', defaultMessage: 'Personal' },
   security: { id: 'navigation_bar.security', defaultMessage: 'Security' },
@@ -111,9 +118,11 @@ class GettingStarted extends ImmutablePureComponent {
         <ColumnSubheading key='header-personal' text={intl.formatMessage(messages.personal)} />,
         <ColumnLink key='home' icon='home' text={intl.formatMessage(messages.home_timeline)} to='/home' />,
         <ColumnLink key='direct' icon='at' text={intl.formatMessage(messages.direct)} to='/conversations' />,
-        <ColumnLink key='bookmark' icon='bookmark' text={intl.formatMessage(messages.bookmarks)} to='/bookmarks' />,
+        <ColumnLink key='bookmark' icon='bookmark' text={intl.formatMessage(messages.bookmarks)} to='/bookmark_categories' />,
         <ColumnLink key='favourites' icon='star' text={intl.formatMessage(messages.favourites)} to='/favourites' />,
         <ColumnLink key='lists' icon='list-ul' text={intl.formatMessage(messages.lists)} to='/lists' />,
+        <ColumnLink key='antennas' icon='wifi' text={intl.formatMessage(messages.antennas)} to='/antennasw' />,
+        <ColumnLink key='circles' icon='user-circle' text={intl.formatMessage(messages.circles)} to='/circles' />,
       );
 
       if (myAccount.get('locked') || unreadFollowRequests > 0) {
@@ -137,7 +146,7 @@ class GettingStarted extends ImmutablePureComponent {
 
           {!multiColumn && <div className='flex-spacer' />}
 
-          <LinkFooter />
+          <LinkFooter multiColumn />
         </div>
 
         {(multiColumn && showTrends) && <TrendsContainer />}

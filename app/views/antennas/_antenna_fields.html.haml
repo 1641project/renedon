@@ -14,6 +14,8 @@
     = f.input :available, wrapper: :with_label, label: t('antennas.edit.available'), hint: false
 
 .fields-row
+  = f.input :insert_feeds, wrapper: :with_label, label: t('antennas.edit.insert_feeds')
+.fields-row
   = f.input :stl, wrapper: :with_label, label: t('antennas.edit.stl'), hint: t('antennas.edit.stl_hint')
 
 %hr.spacer/
@@ -32,7 +34,7 @@
 %h4= t('antennas.contexts.account')
 %p.hint= t 'antennas.edit.accounts_hint'
 
-.fields-row 
+.fields-row
   .fields-row__column.fields-row__column-6.fields-group
     = f.input :accounts_raw, wrapper: :with_label, as: :text, input_html: { rows: 5 }, label: t('antennas.edit.accounts_raw')
   .fields-row__column.fields-row__column-6.fields-group
@@ -40,7 +42,7 @@
 
 %h4= t('antennas.contexts.tag')
 
-.fields-row 
+.fields-row
   .fields-row__column.fields-row__column-6.fields-group
     = f.input :tags_raw, wrapper: :with_label, as: :text, input_html: { rows: 5 }, label: t('antennas.edit.tags_raw')
   .fields-row__column.fields-row__column-6.fields-group
@@ -49,7 +51,7 @@
 %h4= t('antennas.contexts.keyword')
 %p.hint= t 'antennas.edit.keywords_hint'
 
-.fields-row 
+.fields-row
   .fields-row__column.fields-row__column-6.fields-group
     = f.input :keywords_raw, wrapper: :with_label, as: :text, input_html: { rows: 5 }, label: t('antennas.edit.keywords_raw')
   .fields-row__column.fields-row__column-6.fields-group

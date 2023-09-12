@@ -8,7 +8,7 @@ class REST::StatusEditSerializer < ActiveModel::Serializer
   attributes :content, :spoiler_text, :markdown, :sensitive, :created_at
 
   has_many :ordered_media_attachments, key: :media_attachments, serializer: REST::MediaAttachmentSerializer
-  has_many :emojis, serializer: REST::CustomEmojiSerializer
+  has_many :emojis, serializer: REST::CustomEmojiSlimSerializer
 
   attribute :poll, if: -> { object.poll_options.present? }
 

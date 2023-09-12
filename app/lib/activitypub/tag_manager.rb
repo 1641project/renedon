@@ -28,6 +28,8 @@ class ActivityPub::TagManager
       return activity_account_status_url(target.account, target) if target.reblog?
 
       short_account_status_url(target.account, target)
+    when :flag
+      target.uri
     end
   end
 
@@ -47,6 +49,8 @@ class ActivityPub::TagManager
       emoji_url(target)
     when :emoji_reaction
       emoji_reaction_url(target)
+    when :flag
+      target.uri
     end
   end
 
@@ -74,6 +78,12 @@ class ActivityPub::TagManager
     account_status_replies_url(target.account, target, page_params)
   end
 
+  def references_uri_for(target, page_params = nil)
+    raise ArgumentError, 'target must be a local activity' unless %i(note comment activity).include?(target.object_type) && target.local?
+
+    account_status_references_url(target.account, target, page_params)
+  end
+
   def followers_uri_for(target)
     target.local? ? account_followers_url(target) : target.followers_url.presence
   end
@@ -88,7 +98,9 @@ class ActivityPub::TagManager
       [COLLECTIONS[:public]]
     when 'unlisted', 'public_unlisted', 'private'
       [account_followers_url(status.account)]
-    when 'direct', 'limited'
+    when 'login'
+      [account_followers_url(status.account), 'as:LoginOnly', 'LoginUser']
+    when 'direct'
       if status.account.silenced?
         # Only notify followers if the account is locally silenced
         account_ids = status.active_mentions.pluck(:account_id)
@@ -106,6 +118,11 @@ class ActivityPub::TagManager
           result << followers_uri_for(mention.account) if mention.account.group?
         end.compact
       end
+    when 'limited'
+      status.mentions.each_with_object([]) do |mention, result|
+        result << uri_for(mention.account)
+        result << followers_uri_for(mention.account) if mention.account.group?
+      end.compact
     end
   end
 
@@ -204,6 +221,14 @@ class ActivityPub::TagManager
     nil
   end
 
+  def limited_scope(status)
+    if status.mutual_limited?
+      'Mutual'
+    else
+      status.circle_limited? ? 'Circle' : ''
+    end
+  end
+
   def subscribable_by(account)
     account.dissubscribable ? [] : [COLLECTIONS[:public]]
   end
@@ -217,6 +242,8 @@ class ActivityPub::TagManager
         [account_followers_url(status.account)]
       when 'direct'
         status.conversation_id.present? ? [uri_for(status.conversation)] : []
+      when 'limited'
+        ['as:Limited']
       else
         []
       end
@@ -225,11 +252,13 @@ class ActivityPub::TagManager
   end
 
   def account_searchable_by(account)
-    case account.searchability
+    case account.compute_searchability_activitypub
     when 'public'
       [COLLECTIONS[:public]]
     when 'private', 'direct'
       [account_followers_url(account)]
+    when 'limited'
+      ['as:Limited']
     else
       []
     end

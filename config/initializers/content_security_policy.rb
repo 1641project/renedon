@@ -1,9 +1,11 @@
+# frozen_string_literal: true
+
 # Define an application-wide content security policy
 # For further information see the following documentation
 # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy
 
 def host_to_url(str)
-  "http#{Rails.configuration.x.use_https ? 's' : ''}://#{str}" if str.present?
+  "http#{Rails.configuration.x.use_https ? 's' : ''}://#{str.split('/').first}" if str.present?
 end
 
 base_host = Rails.configuration.x.web_domain
@@ -13,15 +15,9 @@ assets_host ||= host_to_url(base_host)
 
 media_host   = host_to_url(ENV['S3_ALIAS_HOST'])
 media_host ||= host_to_url(ENV['S3_CLOUDFRONT_HOST'])
+media_host ||= host_to_url(ENV['AZURE_ALIAS_HOST'])
 media_host ||= host_to_url(ENV['S3_HOSTNAME']) if ENV['S3_ENABLED'] == 'true'
 media_host ||= assets_host
-
-google_host = 'https://www.googletagmanager.com'
-google_host2 = 'https://googleads.g.doubleclick.net'
-google_host3 = 'https://www.googleadservices.com'
-google_host4 = 'https://www.google.co.jp'
-google_host5 = 'https://www.google.com'
-google_tag_script_hash = "'sha256-CS1WvLDd3zJOdxpEk+N+VigcWMa6V345p2HS0WYiFWE='"
 
 Rails.application.config.content_security_policy do |p|
   p.base_uri        :none
@@ -38,13 +34,14 @@ Rails.application.config.content_security_policy do |p|
   p.worker_src      :self, :blob, assets_host
 
   if Rails.env.development?
-    webpacker_urls = %w(ws http).map { |protocol| "#{protocol}#{Webpacker.dev_server.https? ? 's' : ''}://#{Webpacker.dev_server.host_with_port}" }
+    webpacker_public_host = ENV.fetch('WEBPACKER_DEV_SERVER_PUBLIC', Webpacker.config.dev_server[:public])
+    webpacker_urls = %w(ws http).map { |protocol| "#{protocol}#{Webpacker.dev_server.https? ? 's' : ''}://#{webpacker_public_host}" }
 
     p.connect_src :self, :data, :blob, assets_host, media_host, Rails.configuration.x.streaming_api_base_url, *webpacker_urls
-    p.script_src  :self, :unsafe_inline, :unsafe_eval, assets_host, google_host, google_host2, google_host3
+    p.script_src  :self, :unsafe_inline, :unsafe_eval, assets_host
   else
     p.connect_src :self, :data, :blob, assets_host, media_host, Rails.configuration.x.streaming_api_base_url
-    p.script_src  :self, assets_host, "'wasm-unsafe-eval'", google_host, google_host2, google_host3, google_host4, google_host5, google_tag_script_hash
+    p.script_src  :self, assets_host, "'wasm-unsafe-eval'"
   end
 end
 

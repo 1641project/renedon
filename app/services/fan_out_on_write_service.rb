@@ -2,6 +2,7 @@
 
 class FanOutOnWriteService < BaseService
   include Redisable
+  include DtlHelper
 
   # Push a status into home and mentions feeds
   # @param [Status] status
@@ -23,6 +24,8 @@ class FanOutOnWriteService < BaseService
     elsif broadcastable_unlisted?
       fan_out_to_public_recipients!
       fan_out_to_public_unlisted_streams!
+    elsif broadcastable_unlisted2?
+      fan_out_to_unlisted_streams!
     end
   end
 
@@ -46,14 +49,16 @@ class FanOutOnWriteService < BaseService
     notify_about_update! if update?
 
     case @status.visibility.to_sym
-    when :public, :unlisted, :public_unlisted, :private
+    when :public, :unlisted, :public_unlisted, :login, :private
       deliver_to_all_followers!
       deliver_to_lists!
-      if [:public, :public_unlisted].include?(@status.visibility.to_sym)
-        deliver_to_antennas! unless @account.dissubscribable
-        deliver_to_stl_antennas!
-      end
+      deliver_to_antennas! if !@account.dissubscribable || (@status.dtl? && DTL_ENABLED && @account.user&.setting_dtl_force_subscribable && @status.tags.exists?(name: DTL_TAG))
+      deliver_to_stl_antennas!
+      deliver_to_ltl_antennas!
     when :limited
+      deliver_to_lists_mentioned_accounts_only!
+      deliver_to_antennas! unless @account.dissubscribable
+      deliver_to_stl_antennas!
       deliver_to_mentioned_followers!
     else
       deliver_to_mentioned_followers!
@@ -73,6 +78,10 @@ class FanOutOnWriteService < BaseService
   def fan_out_to_public_unlisted_streams!
     broadcast_to_hashtag_streams!
     broadcast_to_public_unlisted_streams!
+  end
+
+  def fan_out_to_unlisted_streams!
+    broadcast_to_hashtag_streams!
   end
 
   def deliver_to_self!
@@ -119,61 +128,25 @@ class FanOutOnWriteService < BaseService
     end
   end
 
-  def deliver_to_stl_antennas!
-    return if @status.reblog? && @account.dissubscribable
-
-    antennas = Antenna.available_stls
-    antennas = antennas.where(account_id: Account.without_suspended.joins(:user).select('accounts.id').where('users.current_sign_in_at > ?', User::ACTIVE_DURATION.ago))
-    antennas = antennas.where(account: @account.followers).where.not(list_id: 0) unless @account.domain.nil?
-
-    collection = AntennaCollection.new(@status, @options[:update])
-
-    antennas.in_batches do |ans|
-      ans.each do |antenna|
-        next if antenna.expired?
-
-        collection.push(antenna)
+  def deliver_to_lists_mentioned_accounts_only!
+    mentioned_account_ids = @status.mentions.pluck(:account_id)
+    @account.lists_for_local_distribution.where(account_id: mentioned_account_ids).select(:id).reorder(nil).find_in_batches do |lists|
+      FeedInsertWorker.push_bulk(lists) do |list|
+        [@status.id, list.id, 'list', { 'update' => update? }]
       end
     end
+  end
 
-    collection.deliver!
+  def deliver_to_stl_antennas!
+    DeliveryAntennaService.new.call(@status, @options[:update], mode: :stl)
+  end
+
+  def deliver_to_ltl_antennas!
+    DeliveryAntennaService.new.call(@status, @options[:update], mode: :ltl)
   end
 
   def deliver_to_antennas!
-    tag_ids = @status.tags.pluck(:id)
-    domain = @account.domain || Rails.configuration.x.local_domain
-
-    antennas = Antenna.availables
-    antennas = antennas.left_joins(:antenna_domains).where(any_domains: true).or(Antenna.left_joins(:antenna_domains).where(antenna_domains: { name: domain }))
-    antennas = antennas.where(with_media_only: false) unless @status.with_media?
-    antennas = antennas.where(ignore_reblog: false) unless @status.reblog?
-    antennas = antennas.where(stl: false)
-
-    antennas = Antenna.where(id: antennas.select(:id))
-    antennas = antennas.left_joins(:antenna_accounts).where(any_accounts: true).or(Antenna.left_joins(:antenna_accounts).where(antenna_accounts: { account: @account }))
-
-    tag_ids = @status.tags.pluck(:id)
-    antennas = Antenna.where(id: antennas.select(:id))
-    antennas = antennas.left_joins(:antenna_tags).where(any_tags: true).or(Antenna.left_joins(:antenna_tags).where(antenna_tags: { tag_id: tag_ids }))
-
-    antennas = antennas.where(account_id: Account.without_suspended.joins(:user).select('accounts.id').where('users.current_sign_in_at > ?', User::ACTIVE_DURATION.ago))
-
-    collection = AntennaCollection.new(@status, @options[:update])
-
-    antennas.in_batches do |ans|
-      ans.each do |antenna|
-        next unless antenna.enabled?
-        next if antenna.keywords.any? && antenna.keywords.none? { |keyword| @status.text.include?(keyword) }
-        next if antenna.exclude_keywords&.any? { |keyword| @status.text.include?(keyword) }
-        next if antenna.exclude_accounts&.include?(@status.account_id)
-        next if antenna.exclude_domains&.include?(domain)
-        next if antenna.exclude_tags&.any? { |tag_id| tag_ids.include?(tag_id) }
-
-        collection.push(antenna)
-      end
-    end
-
-    collection.deliver!
+    DeliveryAntennaService.new.call(@status, @options[:update], mode: :home)
   end
 
   def deliver_to_mentioned_followers!
@@ -229,7 +202,7 @@ class FanOutOnWriteService < BaseService
   end
 
   def rendered_status
-    @rendered_status ||= InlineRenderer.render(@status, nil, :status)
+    @rendered_status ||= InlineRenderer.render(@status, nil, :status_internal)
   end
 
   def update?
@@ -237,44 +210,14 @@ class FanOutOnWriteService < BaseService
   end
 
   def broadcastable?
-    @status.public_visibility? && !@status.reblog? && !@account.silenced?
+    (@status.public_visibility? || @status.login_visibility?) && !@status.reblog? && !@account.silenced?
   end
 
   def broadcastable_unlisted?
     @status.public_unlisted_visibility? && !@status.reblog? && !@account.silenced?
   end
 
-  class AntennaCollection
-    def initialize(status, update)
-      @status = status
-      @update = update
-      @home_account_ids = []
-      @list_ids = []
-    end
-
-    def push(antenna)
-      if antenna.list_id.zero?
-        @home_account_ids << antenna.account_id
-      else
-        @list_ids << antenna.list_id
-      end
-    end
-
-    def deliver!
-      lists = @list_ids.uniq
-      homes = @home_account_ids.uniq
-
-      if lists.any?
-        FeedInsertWorker.push_bulk(lists) do |list|
-          [@status.id, list, 'list', { 'update' => @update }]
-        end
-      end
-
-      if homes.any?
-        FeedInsertWorker.push_bulk(homes) do |home|
-          [@status.id, home, 'home', { 'update' => @update }]
-        end
-      end
-    end
+  def broadcastable_unlisted2?
+    @status.unlisted_visibility? && @status.public_searchability? && !@status.reblog? && !@account.silenced?
   end
 end

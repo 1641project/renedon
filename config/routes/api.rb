@@ -12,6 +12,8 @@ namespace :api, format: false do
         resources :favourited_by, controller: :favourited_by_accounts, only: :index
         resources :emoji_reactioned_by, controller: :emoji_reactioned_by_accounts, only: :index
         resources :emoji_reactioned_by_slim, controller: :emoji_reactioned_by_accounts_slim, only: :index
+        resources :referred_by, controller: :referred_by_statuses, only: :index
+        resources :bookmark_categories, only: :index
         resource :reblog, only: :create
         post :unreblog, to: 'reblogs#destroy'
 
@@ -48,12 +50,14 @@ namespace :api, format: false do
       resource :public, only: :show, controller: :public
       resources :tag, only: :show
       resources :list, only: :show
+      resources :antenna, only: :show
     end
 
     get '/streaming', to: 'streaming#index'
     get '/streaming/(*any)', to: 'streaming#index'
 
     resources :custom_emojis, only: [:index]
+    resources :reaction_deck, only: [:index, :create]
     resources :suggestions, only: [:index, :destroy]
     resources :scheduled_statuses, only: [:index, :show, :update, :destroy]
     resources :preferences, only: [:index]
@@ -88,6 +92,7 @@ namespace :api, format: false do
     resources :conversations, only: [:index, :destroy] do
       member do
         post :read
+        post :unread
       end
     end
 
@@ -102,6 +107,11 @@ namespace :api, format: false do
     resources :filters, only: [:index, :create, :show, :update, :destroy]
     resources :endorsements, only: [:index]
     resources :markers, only: [:index, :create]
+
+    namespace :profile do
+      resource :avatar, only: :destroy
+      resource :header, only: :destroy
+    end
 
     namespace :apps do
       get :verify_credentials, to: 'credentials#show'
@@ -127,7 +137,12 @@ namespace :api, format: false do
       resource :privacy_policy, only: [:show], controller: 'instances/privacy_policies'
       resource :extended_description, only: [:show], controller: 'instances/extended_descriptions'
       resource :translation_languages, only: [:show], controller: 'instances/translation_languages'
+      resource :languages, only: [:show], controller: 'instances/languages'
       resource :activity, only: [:show], controller: 'instances/activity'
+    end
+
+    namespace :peers do
+      get :search, to: 'search#index'
     end
 
     resource :domain_blocks, only: [:show, :create, :destroy]
@@ -166,6 +181,8 @@ namespace :api, format: false do
       resources :following, only: :index, controller: 'accounts/following_accounts'
       resources :lists, only: :index, controller: 'accounts/lists'
       resources :antennas, only: :index, controller: 'accounts/antennas'
+      resources :exclude_antennas, only: :index, controller: 'accounts/exclude_antennas'
+      resources :circles, only: :index, controller: 'accounts/circles'
       resources :identity_proofs, only: :index, controller: 'accounts/identity_proofs'
       resources :featured_tags, only: :index, controller: 'accounts/featured_tags'
 
@@ -199,6 +216,21 @@ namespace :api, format: false do
 
     resources :antennas, only: [:index, :create, :show, :update, :destroy] do
       resource :accounts, only: [:show, :create, :destroy], controller: 'antennas/accounts'
+      resource :domains, only: [:show, :create, :destroy], controller: 'antennas/domains'
+      resource :keywords, only: [:show, :create, :destroy], controller: 'antennas/keywords'
+      resource :tags, only: [:show, :create, :destroy], controller: 'antennas/tags'
+      resource :exclude_accounts, only: [:show, :create, :destroy], controller: 'antennas/exclude_accounts'
+      resource :exclude_domains, only: [:create, :destroy], controller: 'antennas/exclude_domains'
+      resource :exclude_keywords, only: [:create, :destroy], controller: 'antennas/exclude_keywords'
+      resource :exclude_tags, only: [:create, :destroy], controller: 'antennas/exclude_tags'
+    end
+
+    resources :circles, only: [:index, :create, :show, :update, :destroy] do
+      resource :accounts, only: [:show, :create, :destroy], controller: 'circles/accounts'
+    end
+
+    resources :bookmark_categories, only: [:index, :create, :show, :update, :destroy] do
+      resource :statuses, only: [:show, :create, :destroy], controller: 'bookmark_categories/statuses'
     end
 
     namespace :featured_tags do
@@ -308,7 +340,7 @@ namespace :api, format: false do
 
   namespace :web do
     resource :settings, only: [:update]
-    resource :embed, only: [:create]
+    resources :embeds, only: [:show]
     resources :push_subscriptions, only: [:create] do
       member do
         put :update

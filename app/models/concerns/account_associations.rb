@@ -15,6 +15,9 @@ module AccountAssociations
     has_many :favourites, inverse_of: :account, dependent: :destroy
     has_many :emoji_reactions, inverse_of: :account, dependent: :destroy
     has_many :bookmarks, inverse_of: :account, dependent: :destroy
+    has_many :bookmark_categories, inverse_of: :account, dependent: :destroy
+    has_many :circles, inverse_of: :account, dependent: :destroy
+    has_many :antennas, inverse_of: :account, dependent: :destroy
     has_many :mentions, inverse_of: :account, dependent: :destroy
     has_many :notifications, inverse_of: :account, dependent: :destroy
     has_many :conversations, class_name: 'AccountConversation', dependent: :destroy, inverse_of: :account
@@ -51,6 +54,10 @@ module AccountAssociations
     # Antennas (that the account is on, not owned by the account)
     has_many :antenna_accounts, inverse_of: :account, dependent: :destroy
     has_many :joined_antennas, class_name: 'Antenna', through: :antenna_accounts, source: :antenna
+
+    # Circles (that the account is on, not owned by the account)
+    has_many :circle_accounts, inverse_of: :account, dependent: :destroy
+    has_many :joined_circles, class_name: 'Circle', through: :circle_accounts, source: :circle
 
     # Lists (that the account is on, not owned by the account)
     has_many :list_accounts, inverse_of: :account, dependent: :destroy

@@ -1,9 +1,15 @@
-import api from '../api';
-import { importFetchedAccounts, importFetchedStatus } from './importer';
+import api, { getLinks } from '../api';
+
+import { fetchRelationships } from './accounts';
+import { importFetchedAccounts, importFetchedStatus, importFetchedStatuses } from './importer';
 
 export const REBLOG_REQUEST = 'REBLOG_REQUEST';
 export const REBLOG_SUCCESS = 'REBLOG_SUCCESS';
 export const REBLOG_FAIL    = 'REBLOG_FAIL';
+
+export const REBLOGS_EXPAND_REQUEST = 'REBLOGS_EXPAND_REQUEST';
+export const REBLOGS_EXPAND_SUCCESS = 'REBLOGS_EXPAND_SUCCESS';
+export const REBLOGS_EXPAND_FAIL = 'REBLOGS_EXPAND_FAIL';
 
 export const FAVOURITE_REQUEST = 'FAVOURITE_REQUEST';
 export const FAVOURITE_SUCCESS = 'FAVOURITE_SUCCESS';
@@ -32,6 +38,14 @@ export const REBLOGS_FETCH_FAIL    = 'REBLOGS_FETCH_FAIL';
 export const FAVOURITES_FETCH_REQUEST = 'FAVOURITES_FETCH_REQUEST';
 export const FAVOURITES_FETCH_SUCCESS = 'FAVOURITES_FETCH_SUCCESS';
 export const FAVOURITES_FETCH_FAIL    = 'FAVOURITES_FETCH_FAIL';
+
+export const FAVOURITES_EXPAND_REQUEST = 'FAVOURITES_EXPAND_REQUEST';
+export const FAVOURITES_EXPAND_SUCCESS = 'FAVOURITES_EXPAND_SUCCESS';
+export const FAVOURITES_EXPAND_FAIL    = 'FAVOURITES_EXPAND_FAIL';
+
+export const STATUS_REFERENCES_FETCH_REQUEST = 'STATUS_REFERENCES_FETCH_REQUEST';
+export const STATUS_REFERENCES_FETCH_SUCCESS = 'STATUS_REFERENCES_FETCH_SUCCESS';
+export const STATUS_REFERENCES_FETCH_FAIL    = 'STATUS_REFERENCES_FETCH_FAIL';
 
 export const EMOJI_REACTIONS_FETCH_REQUEST = 'EMOJI_REACTIONS_FETCH_REQUEST';
 export const EMOJI_REACTIONS_FETCH_SUCCESS = 'EMOJI_REACTIONS_FETCH_SUCCESS';
@@ -369,8 +383,10 @@ export function fetchReblogs(id) {
     dispatch(fetchReblogsRequest(id));
 
     api(getState).get(`/api/v1/statuses/${id}/reblogged_by`).then(response => {
+      const next = getLinks(response).refs.find(link => link.rel === 'next');
       dispatch(importFetchedAccounts(response.data));
-      dispatch(fetchReblogsSuccess(id, response.data));
+      dispatch(fetchReblogsSuccess(id, response.data, next ? next.uri : null));
+      dispatch(fetchRelationships(response.data.map(item => item.id)));
     }).catch(error => {
       dispatch(fetchReblogsFail(id, error));
     });
@@ -384,17 +400,62 @@ export function fetchReblogsRequest(id) {
   };
 }
 
-export function fetchReblogsSuccess(id, accounts) {
+export function fetchReblogsSuccess(id, accounts, next) {
   return {
     type: REBLOGS_FETCH_SUCCESS,
     id,
     accounts,
+    next,
   };
 }
 
 export function fetchReblogsFail(id, error) {
   return {
     type: REBLOGS_FETCH_FAIL,
+    id,
+    error,
+  };
+}
+
+export function expandReblogs(id) {
+  return (dispatch, getState) => {
+    const url = getState().getIn(['user_lists', 'reblogged_by', id, 'next']);
+    if (url === null) {
+      return;
+    }
+
+    dispatch(expandReblogsRequest(id));
+
+    api(getState).get(url).then(response => {
+      const next = getLinks(response).refs.find(link => link.rel === 'next');
+
+      dispatch(importFetchedAccounts(response.data));
+      dispatch(expandReblogsSuccess(id, response.data, next ? next.uri : null));
+      dispatch(fetchRelationships(response.data.map(item => item.id)));
+    }).catch(error => dispatch(expandReblogsFail(id, error)));
+  };
+}
+
+export function expandReblogsRequest(id) {
+  return {
+    type: REBLOGS_EXPAND_REQUEST,
+    id,
+  };
+}
+
+export function expandReblogsSuccess(id, accounts, next) {
+  return {
+    type: REBLOGS_EXPAND_SUCCESS,
+    id,
+    accounts,
+    next,
+  };
+}
+
+export function expandReblogsFail(id, error) {
+  return {
+    type: REBLOGS_EXPAND_FAIL,
+    id,
     error,
   };
 }
@@ -404,8 +465,10 @@ export function fetchFavourites(id) {
     dispatch(fetchFavouritesRequest(id));
 
     api(getState).get(`/api/v1/statuses/${id}/favourited_by`).then(response => {
+      const next = getLinks(response).refs.find(link => link.rel === 'next');
       dispatch(importFetchedAccounts(response.data));
-      dispatch(fetchFavouritesSuccess(id, response.data));
+      dispatch(fetchFavouritesSuccess(id, response.data, next ? next.uri : null));
+      dispatch(fetchRelationships(response.data.map(item => item.id)));
     }).catch(error => {
       dispatch(fetchFavouritesFail(id, error));
     });
@@ -419,17 +482,62 @@ export function fetchFavouritesRequest(id) {
   };
 }
 
-export function fetchFavouritesSuccess(id, accounts) {
+export function fetchFavouritesSuccess(id, accounts, next) {
   return {
     type: FAVOURITES_FETCH_SUCCESS,
     id,
     accounts,
+    next,
   };
 }
 
 export function fetchFavouritesFail(id, error) {
   return {
     type: FAVOURITES_FETCH_FAIL,
+    id,
+    error,
+  };
+}
+
+export function expandFavourites(id) {
+  return (dispatch, getState) => {
+    const url = getState().getIn(['user_lists', 'favourited_by', id, 'next']);
+    if (url === null) {
+      return;
+    }
+
+    dispatch(expandFavouritesRequest(id));
+
+    api(getState).get(url).then(response => {
+      const next = getLinks(response).refs.find(link => link.rel === 'next');
+
+      dispatch(importFetchedAccounts(response.data));
+      dispatch(expandFavouritesSuccess(id, response.data, next ? next.uri : null));
+      dispatch(fetchRelationships(response.data.map(item => item.id)));
+    }).catch(error => dispatch(expandFavouritesFail(id, error)));
+  };
+}
+
+export function expandFavouritesRequest(id) {
+  return {
+    type: FAVOURITES_EXPAND_REQUEST,
+    id,
+  };
+}
+
+export function expandFavouritesSuccess(id, accounts, next) {
+  return {
+    type: FAVOURITES_EXPAND_SUCCESS,
+    id,
+    accounts,
+    next,
+  };
+}
+
+export function expandFavouritesFail(id, error) {
+  return {
+    type: FAVOURITES_EXPAND_FAIL,
+    id,
     error,
   };
 }
@@ -465,6 +573,41 @@ export function fetchEmojiReactionsSuccess(id, accounts) {
 export function fetchEmojiReactionsFail(id, error) {
   return {
     type: EMOJI_REACTIONS_FETCH_FAIL,
+    error,
+  };
+}
+
+export function fetchStatusReferences(id) {
+  return (dispatch, getState) => {
+    dispatch(fetchStatusReferencesRequest(id));
+
+    api(getState).get(`/api/v1/statuses/${id}/referred_by`).then(response => {
+      dispatch(importFetchedStatuses(response.data));
+      dispatch(fetchStatusReferencesSuccess(id, response.data));
+    }).catch(error => {
+      dispatch(fetchStatusReferencesFail(id, error));
+    });
+  };
+}
+
+export function fetchStatusReferencesRequest(id) {
+  return {
+    type: STATUS_REFERENCES_FETCH_REQUEST,
+    id,
+  };
+}
+
+export function fetchStatusReferencesSuccess(id, statuses) {
+  return {
+    type: STATUS_REFERENCES_FETCH_SUCCESS,
+    id,
+    statuses,
+  };
+}
+
+export function fetchStatusReferencesFail(id, error) {
+  return {
+    type: STATUS_REFERENCES_FETCH_FAIL,
     error,
   };
 }

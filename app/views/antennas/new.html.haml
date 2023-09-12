@@ -2,6 +2,7 @@
   = t('antennas.new.title')
 
 = simple_form_for @antenna, url: antennas_path do |f|
+  = render 'shared/error_messages', object: @antenna
   = render 'antenna_fields', f: f, lists: @lists
 
   .actions

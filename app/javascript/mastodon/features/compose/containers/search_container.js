@@ -1,4 +1,5 @@
 import { connect } from 'react-redux';
+
 import {
   changeSearch,
   clearSearch,
@@ -8,12 +9,13 @@ import {
   clickSearchResult,
   forgetSearchResult,
 } from 'mastodon/actions/search';
+
 import Search from '../components/search';
 
 const mapStateToProps = state => ({
   value: state.getIn(['search', 'value']),
   submitted: state.getIn(['search', 'submitted']),
-  recent: state.getIn(['search', 'recent']),
+  recent: state.getIn(['search', 'recent']).reverse(),
 });
 
 const mapDispatchToProps = dispatch => ({

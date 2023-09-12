@@ -1,6 +1,17 @@
 // @ts-check
 
+import { getLocale } from '../locales';
 import { connectStream } from '../stream';
+
+import {
+  fetchAnnouncements,
+  updateAnnouncements,
+  updateReaction as updateAnnouncementsReaction,
+  deleteAnnouncement,
+} from './announcements';
+import { updateConversations } from './conversations';
+import { updateNotifications, expandNotifications, updateEmojiReactions } from './notifications';
+import { updateStatus } from './statuses';
 import {
   updateTimeline,
   deleteFromTimelines,
@@ -11,19 +22,8 @@ import {
   fillPublicTimelineGaps,
   fillCommunityTimelineGaps,
   fillListTimelineGaps,
+  fillAntennaTimelineGaps,
 } from './timelines';
-import { updateNotifications, expandNotifications, updateEmojiReactions } from './notifications';
-import { updateConversations } from './conversations';
-import { updateStatus } from './statuses';
-import {
-  fetchAnnouncements,
-  updateAnnouncements,
-  updateReaction as updateAnnouncementsReaction,
-  deleteAnnouncement,
-} from './announcements';
-import { getLocale } from '../locales';
-
-const { messages } = getLocale();
 
 /**
  * @param {number} max
@@ -42,8 +42,10 @@ const randomUpTo = max =>
  * @param {function(object): boolean} [options.accept]
  * @returns {function(): void}
  */
-export const connectTimelineStream = (timelineId, channelName, params = {}, options = {}) =>
-  connectStream(channelName, params, (dispatch, getState) => {
+export const connectTimelineStream = (timelineId, channelName, params = {}, options = {}) => {
+  const { messages } = getLocale();
+
+  return connectStream(channelName, params, (dispatch, getState) => {
     const locale = getState().getIn(['meta', 'locale']);
 
     // @ts-expect-error
@@ -124,6 +126,7 @@ export const connectTimelineStream = (timelineId, channelName, params = {}, opti
       },
     };
   });
+};
 
 /**
  * @param {Function} dispatch
@@ -183,3 +186,10 @@ export const connectDirectStream = () =>
  */
 export const connectListStream = listId =>
   connectTimelineStream(`list:${listId}`, 'list', { list: listId }, { fillGaps: () => fillListTimelineGaps(listId) });
+
+/**
+ * @param {string} antennaId
+ * @returns {function(): void}
+ */
+export const connectAntennaStream = antennaId =>
+connectTimelineStream(`antenna:${antennaId}`, 'antenna', { antenna: antennaId }, { fillGaps: () => fillAntennaTimelineGaps(antennaId) });

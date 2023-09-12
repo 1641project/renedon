@@ -17,6 +17,7 @@ class UpdateStatusService < BaseService
   # @option options [Boolean] :sensitive
   # @option options [Boolean] :markdown
   # @option options [String] :language
+  # @option [Enumerable] :status_reference_ids Optional array
   def call(status, account_id, options = {})
     @status                    = status
     @options                   = options
@@ -25,6 +26,8 @@ class UpdateStatusService < BaseService
     @poll_changed              = false
 
     clear_histories! if @options[:no_history]
+
+    validate_status!
 
     Status.transaction do
       create_previous_edit! unless @options[:no_history]
@@ -37,7 +40,11 @@ class UpdateStatusService < BaseService
     queue_poll_notifications!
     reset_preview_card!
     update_metadata!
+    update_references!
     broadcast_updates!
+
+    # Mentions are not updated (Cause unknown)
+    @status.reload
 
     @status
   rescue NoChangesSubmittedError
@@ -67,6 +74,11 @@ class UpdateStatusService < BaseService
     @status.ordered_media_attachment_ids = (@options[:media_ids] || []).map(&:to_i) & next_media_attachments.map(&:id)
     @media_attachments_changed ||= previous_media_attachments.map(&:id) != @status.ordered_media_attachment_ids
     @status.media_attachments.reload
+  end
+
+  def validate_status!
+    raise Mastodon::ValidationError, I18n.t('statuses.contains_ng_words') if Admin::NgWord.reject?("#{@options[:spoiler_text]}\n#{@options[:text]}")
+    raise Mastodon::ValidationError, I18n.t('statuses.too_many_hashtags') if Admin::NgWord.hashtag_reject_with_extractor?(@options[:text])
   end
 
   def validate_media!
@@ -118,6 +130,7 @@ class UpdateStatusService < BaseService
     @status.markdown     = @options[:markdown] || false
     @status.sensitive    = @options[:sensitive] || @options[:spoiler_text].present? if @options.key?(:sensitive) || @options.key?(:spoiler_text)
     @status.language     = valid_locale_cascade(@options[:language], @status.language, @status.account.user&.preferred_posting_language, I18n.default_locale)
+    process_sensitive_words
 
     # We raise here to rollback the entire transaction
     raise NoChangesSubmittedError unless significant_changes?
@@ -126,6 +139,13 @@ class UpdateStatusService < BaseService
 
     @status.edited_at = Time.now.utc
     @status.save!
+  end
+
+  def process_sensitive_words
+    return unless [:public, :public_unlisted, :login].include?(@status.visibility&.to_sym) && Admin::SensitiveWord.sensitive?(@status.text, @status.spoiler_text || '')
+
+    @status.text = Admin::SensitiveWord.modified_text(@status.text, @status.spoiler_text)
+    @status.spoiler_text = I18n.t('admin.sensitive_words.alert')
   end
 
   def update_expiration!
@@ -137,6 +157,11 @@ class UpdateStatusService < BaseService
 
     @status.preview_cards.clear
     LinkCrawlWorker.perform_async(@status.id)
+  end
+
+  def update_references!
+    reference_ids = (@options[:status_reference_ids] || []).map(&:to_i).filter(&:positive?)
+    ProcessReferencesWorker.perform_async(@status.id, reference_ids, [])
   end
 
   def update_metadata!

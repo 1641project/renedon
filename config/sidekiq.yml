@@ -23,7 +23,7 @@
       class: Scheduler::Trends::ReviewNotificationsScheduler
       queue: scheduler
     indexing_scheduler:
-      every: '5m'
+      interval: 1 minute
       class: Scheduler::IndexingScheduler
       queue: scheduler
     vacuum_scheduler:
@@ -61,4 +61,12 @@
     sidekiq_health_scheduler:
       interval: 30 seconds
       class: Scheduler::SidekiqHealthScheduler
+      queue: scheduler
+    update_instance_info_scheduler:
+      cron: '0 0 * * *'
+      class: Scheduler::UpdateInstanceInfoScheduler
+      queue: scheduler
+    software_update_check_scheduler:
+      interval: 30 minutes
+      class: Scheduler::SoftwareUpdateCheckScheduler
       queue: scheduler

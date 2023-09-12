@@ -5,6 +5,12 @@ class UpdateAccountService < BaseService
     was_locked    = account.locked
     update_method = raise_error ? :update! : :update
 
+    if account.user && params.key?(:bio_markdown)
+      user_params = { settings_attributes: { bio_markdown: params['bio_markdown'] } }
+      params.delete(:bio_markdown)
+      account.user.send(update_method, user_params)
+    end
+
     account.send(update_method, params).tap do |ret|
       next unless ret
 

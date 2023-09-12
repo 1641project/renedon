@@ -74,6 +74,7 @@ class REST::InstanceSerializer < ActiveModel::Serializer
         max_characters_per_option: PollValidator::MAX_OPTION_CHARS,
         min_expiration: PollValidator::MIN_EXPIRATION,
         max_expiration: PollValidator::MAX_EXPIRATION,
+        allow_image: true,
       },
 
       translation: {
@@ -83,6 +84,10 @@ class REST::InstanceSerializer < ActiveModel::Serializer
       emoji_reactions: {
         max_reactions: EmojiReaction::EMOJI_REACTION_LIMIT,
         max_reactions_per_account: EmojiReaction::EMOJI_REACTION_PER_ACCOUNT_LIMIT,
+      },
+
+      reaction_deck: {
+        max_emojis: User::REACTION_DECK_MAX,
       },
 
       reactions: {
@@ -96,6 +101,7 @@ class REST::InstanceSerializer < ActiveModel::Serializer
       enabled: registrations_enabled?,
       approval_required: Setting.registrations_mode == 'approved',
       message: registrations_enabled? ? nil : registrations_message,
+      url: ENV.fetch('SSO_ACCOUNT_SIGN_UP', nil),
     }
   end
 
@@ -109,6 +115,14 @@ class REST::InstanceSerializer < ActiveModel::Serializer
       :kmyblue_searchability,
       :searchability,
       :kmyblue_markdown,
+      :kmyblue_reaction_deck,
+      :kmyblue_visibility_login,
+      :status_reference,
+      :visibility_mutual,
+      :visibility_limited,
+      :kmyblue_limited_scope,
+      :kmyblue_antenna,
+      :kmyblue_bookmark_category,
     ]
 
     capabilities << :profile_search unless Chewy.enabled?

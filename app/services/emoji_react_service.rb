@@ -4,6 +4,7 @@ class EmojiReactService < BaseService
   include Authorization
   include Payloadable
   include Redisable
+  include Lockable
 
   # React a status with emoji and notify remote user
   # @param [Account] account
@@ -11,17 +12,23 @@ class EmojiReactService < BaseService
   # @param [string] name
   # @return [Favourite]
   def call(account, status, name)
+    status = status.reblog if status.reblog? && !status.reblog.nil?
     authorize_with account, status, :emoji_reaction?
 
-    emoji_reaction = EmojiReaction.find_by(account: account, status: status, name: name)
+    emoji_reaction = nil
 
-    return emoji_reaction unless emoji_reaction.nil?
+    with_redis_lock("emoji_reaction:#{status.id}") do
+      emoji_reaction = EmojiReaction.find_by(account: account, status: status, name: name)
+      raise Mastodon::ValidationError, I18n.t('reactions.errors.duplication') unless emoji_reaction.nil?
 
-    shortcode, domain = name.split('@')
+      shortcode, domain = name.split('@')
+      custom_emoji = CustomEmoji.find_by(shortcode: shortcode, domain: domain)
+      emoji_reaction = EmojiReaction.create!(account: account, status: status, name: shortcode, custom_emoji: custom_emoji)
 
-    custom_emoji = CustomEmoji.find_by(shortcode: shortcode, domain: domain)
+      status.touch # rubocop:disable Rails/SkipsModelValidations
+    end
 
-    emoji_reaction = EmojiReaction.create!(account: account, status: status, name: shortcode, custom_emoji: custom_emoji)
+    raise Mastodon::ValidationError, I18n.t('reactions.errors.duplication') if emoji_reaction.nil?
 
     Trends.statuses.register(status)
 
@@ -39,8 +46,10 @@ class EmojiReactService < BaseService
     status = emoji_reaction.status
 
     if status.account.local?
-      LocalNotificationWorker.perform_async(status.account_id, emoji_reaction.id, 'EmojiReaction', 'reaction') if status.account.user&.setting_emoji_reaction_streaming_notify_impl2
-      LocalNotificationWorker.perform_async(status.account_id, emoji_reaction.id, 'EmojiReaction', 'emoji_reaction')
+      if status.account.user&.setting_enable_emoji_reaction
+        LocalNotificationWorker.perform_async(status.account_id, emoji_reaction.id, 'EmojiReaction', 'reaction') if status.account.user&.setting_emoji_reaction_streaming_notify_impl2
+        LocalNotificationWorker.perform_async(status.account_id, emoji_reaction.id, 'EmojiReaction', 'emoji_reaction')
+      end
     elsif status.account.activitypub?
       ActivityPub::DeliveryWorker.perform_async(build_json(emoji_reaction), emoji_reaction.account_id, status.account.inbox_url)
     end
@@ -50,6 +59,7 @@ class EmojiReactService < BaseService
     status = emoji_reaction.status
 
     return unless status.account.local?
+    return if emoji_reaction.remote_custom_emoji?
 
     ActivityPub::RawDistributionWorker.perform_async(build_json(emoji_reaction), status.account_id)
   end
@@ -58,7 +68,7 @@ class EmojiReactService < BaseService
     emoji_group = emoji_reaction.status.emoji_reactions_grouped_by_name
                                 .find { |reaction_group| reaction_group['name'] == emoji_reaction.name && (!reaction_group.key?(:domain) || reaction_group['domain'] == emoji_reaction.custom_emoji&.domain) }
     emoji_group['status_id'] = emoji_reaction.status_id.to_s
-    DeliveryEmojiReactionWorker.perform_async(render_emoji_reaction(emoji_group), emoji_reaction.status_id, emoji_reaction.account_id)
+    DeliveryEmojiReactionWorker.perform_async(render_emoji_reaction(emoji_group), emoji_reaction.id, emoji_reaction.account_id)
   end
 
   def bump_potential_friendship(account, status)

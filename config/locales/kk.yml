@@ -1,7 +1,6 @@
----
 kk:
   about:
-    about_mastodon_html: Mastodon - әлеуметтік желіге негізделген, тегін және веб протоколды, ашық кодты бағдарлама. Ол email сияқты орталығы жоқ құрылым.
+    about_mastodon_html: 'Mastodon - әлеуметтік желіге негізделген, тегін және веб протоколды, ашық кодты бағдарлама. Ол email сияқты орталығы жоқ құрылым.'
     contact_missing: Бапталмаған
     contact_unavailable: Белгісіз
     hosted_on: Mastodon орнатылған %{domain} доменінде
@@ -303,11 +302,11 @@ kk:
   admin_mailer:
     new_pending_account:
       body: Жаңа есептік жазба туралы мәліметтер төменде берілген. Бұл қолданбаны мақұлдауыңызға немесе қабылдамауыңызға болады.
-      subject: Жаңа аккаунт күтілуде %{instance} (#%{username})
+      subject: 'Жаңа аккаунт күтілуде %{instance} (#%{username})'
     new_report:
       body: "%{reporter} has rеported %{target}"
       body_remote: Someone from %{domain} has rеported %{target}
-      subject: New rеport for %{instance} (#%{id})
+      subject: 'New rеport for %{instance} (#%{id})'
   aliases:
     add_new: Алиас қосу
     created_msg: Жаңа алиас сәтті жасалды. Енді сіз ескі аккаунттан көшіруді бастай аласыз.
@@ -320,7 +319,6 @@ kk:
     confirmation_dialogs: Пікірталас диалогтары
     discovery: Пікірталас
     sensitive_content: Нәзік контент
-    toot_layout: Жазба формасы
   application_mailer:
     notification_preferences: Change e-mail prеferences
     settings: 'Change e-mail preferеnces: %{link}'
@@ -335,7 +333,6 @@ kk:
     warning: Be very carеful with this data. Never share it with anyone!
     your_token: Your access tokеn
   auth:
-    change_password: Құпиясөз
     delete_account: Аккаунт өшіру
     delete_account_html: Аккаунтыңызды жойғыңыз келсе, <a href="%{path}">мына жерді</a> басыңыз. Сізден растау сұралатын болады.
     description:
@@ -362,17 +359,6 @@ kk:
       confirming: Электрондық поштаны растау аяқталуын күтуде.
       pending: Сіздің өтінішіңіз біздің қызметкерлеріміздің қарауында. Бұл біраз уақыт алуы мүмкін. Өтінішіңіз мақұлданса, сізге электрондық пошта хабарламасы келеді.
       redirecting_to: Сіздің есептік жазбаңыз белсенді емес, себебі ол %{acct} жүйесіне қайта бағытталуда.
-  authorize_follow:
-    already_following: Бұл аккаунтқа жазылғансыз
-    error: Өкінішке орай, қашықтағы тіркелгіні іздеуде қате пайда болды
-    follow: Жазылу
-    follow_request: 'Сіз жазылуға өтініш жібердіңіз:'
-    following: 'Керемет! Сіз енді жазылдыңыз:'
-    post_follow:
-      close: Немесе терезені жаба салыңыз.
-      return: Қолданушы профилін көрсет
-      web: Вебте ашу
-    title: Жазылу %{acct}
   challenge:
     confirm: Жалғастыру
     hint_html: "<strong> Кеңес: </strong> біз келесі сағат ішінде сізден құпия сөзді қайта сұрамаймыз."
@@ -574,9 +560,9 @@ kk:
       duration_too_short: тым аз екен
       expired: Сауалнама уақыты аяқталған
       invalid_choice: Таңдалған жауап енді жоқ екен
-      over_character_limit: "%{max} таңбадан артық болмайды"
+      over_character_limit: '%{max} таңбадан артық болмайды'
       too_few_options: бір жауаптан көп болуы керек
-      too_many_options: "%{max} жауаптан көп болмайды"
+      too_many_options: '%{max} жауаптан көп болмайды'
   preferences:
     other: Басқа
     posting_defaults: Пост жазу негіздері
@@ -677,7 +663,7 @@ kk:
       one: 'рұқсат етілмеген хэштег: %{tags}'
       other: 'рұқсат етілмеген хэштегтер: %{tags}'
     open_in_web: Вебте ашу
-    over_character_limit: "%{max} максимум таңбадан асып кетті"
+    over_character_limit: '%{max} максимум таңбадан асып кетті'
     pin_errors:
       limit: Жабыстырылатын жазба саны максимумынан асты
       ownership: Біреудің жазбасы жабыстырылмайды
@@ -692,7 +678,6 @@ kk:
       vote: Дауыс беру
     show_more: Тағы әкел
     show_thread: Тақырыпты көрсет
-    sign_in_to_participate: Сұхбатқа қатысу үшін кіріңіз
     visibilities:
       private: Тек оқырмандарға
       private_long: Тек оқырмандарға ғана көрінеді
@@ -701,8 +686,6 @@ kk:
       unlisted: Тізімге енбеген
       unlisted_long: Бәрі көре алады, бірақ ашық тізімдерге ене алмайды
   stream_entries:
-    pinned: Жабыстырылған жазба
-    reblogged: бөлісті
     sensitive_content: Нәзік мазмұн
   tags:
     does_not_match_previous_name: алдыңғы атқа сәйкес келмейді
@@ -727,9 +710,9 @@ kk:
     warning:
       subject:
         disable: Аккаунтыңыз %{acct} уақытша тоқтатылды
-        none: "%{acct} ескертуі"
-        silence: "%{acct} аккаунтыңыз шектеулі"
-        suspend: "%{acct} аккаунт тоқтатылды"
+        none: '%{acct} ескертуі'
+        silence: '%{acct} аккаунтыңыз шектеулі'
+        suspend: '%{acct} аккаунт тоқтатылды'
       title:
         disable: Аккаунт қатырылды
         none: Ескерту

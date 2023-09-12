@@ -87,6 +87,29 @@ module AccountSearch
     LIMIT :limit OFFSET :offset
   SQL
 
+  ADVANCED_SEARCH_WITH_FOLLOWED = <<~SQL.squish
+    WITH first_degree AS (
+      SELECT account_id
+      FROM follows
+      WHERE target_account_id = :id
+      UNION ALL
+      SELECT :id
+    )
+    SELECT
+      accounts.*,
+      (count(f.id) + 1) * #{BOOST} * ts_rank_cd(#{TEXT_SEARCH_RANKS}, to_tsquery('simple', :tsquery), 32) AS rank
+    FROM accounts
+    LEFT OUTER JOIN follows AS f ON (accounts.id = f.target_account_id AND f.account_id = :id)
+    LEFT JOIN account_stats AS s ON accounts.id = s.account_id
+    WHERE accounts.id IN (SELECT * FROM first_degree)
+      AND to_tsquery('simple', :tsquery) @@ #{TEXT_SEARCH_RANKS}
+      AND accounts.suspended_at IS NULL
+      AND accounts.moved_to_account_id IS NULL
+    GROUP BY accounts.id, s.id
+    ORDER BY rank DESC
+    LIMIT :limit OFFSET :offset
+  SQL
+
   ADVANCED_SEARCH_WITHOUT_FOLLOWING = <<~SQL.squish
     SELECT
       accounts.*,
@@ -106,21 +129,36 @@ module AccountSearch
     LIMIT :limit OFFSET :offset
   SQL
 
+  def searchable_text
+    PlainTextFormatter.new(note, local?).to_s if discoverable?
+  end
+
+  def searchable_properties
+    [].tap do |properties|
+      properties << 'bot' if bot?
+      properties << 'verified' if fields.any?(&:verified?)
+    end
+  end
+
   class_methods do
     def search_for(terms, limit: 10, offset: 0)
       tsquery = generate_query_for_search(terms)
 
       find_by_sql([BASIC_SEARCH_SQL, { limit: limit, offset: offset, tsquery: tsquery }]).tap do |records|
-        ActiveRecord::Associations::Preloader.new.preload(records, :account_stat)
+        ActiveRecord::Associations::Preloader.new(records: records, associations: :account_stat)
       end
     end
 
-    def advanced_search_for(terms, account, limit: 10, following: false, offset: 0)
+    def advanced_search_for(terms, account, limit: 10, following: false, follower: false, offset: 0)
       tsquery = generate_query_for_search(terms)
-      sql_template = following ? ADVANCED_SEARCH_WITH_FOLLOWING : ADVANCED_SEARCH_WITHOUT_FOLLOWING
+      sql_template = if following
+                       ADVANCED_SEARCH_WITH_FOLLOWING
+                     else
+                       follower ? ADVANCED_SEARCH_WITH_FOLLOWED : ADVANCED_SEARCH_WITHOUT_FOLLOWING
+                     end
 
       find_by_sql([sql_template, { id: account.id, limit: limit, offset: offset, tsquery: tsquery }]).tap do |records|
-        ActiveRecord::Associations::Preloader.new.preload(records, :account_stat)
+        ActiveRecord::Associations::Preloader.new(records: records, associations: :account_stat)
       end
     end
 

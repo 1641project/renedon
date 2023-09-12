@@ -52,7 +52,7 @@ module ApplicationHelper
     if closed_registrations? || omniauth_only?
       'https://joinmastodon.org/#getting-started'
     else
-      new_user_registration_path
+      ENV.fetch('SSO_ACCOUNT_SIGN_UP', new_user_registration_path)
     end
   end
 
@@ -124,6 +124,8 @@ module ApplicationHelper
       fa_icon('unlock', title: I18n.t('statuses.visibilities.unlisted'))
     elsif status.public_unlisted_visibility?
       fa_icon('cloud', title: I18n.t('statuses.visibilities.public_unlisted'))
+    elsif status.login_visibility?
+      fa_icon('key', title: I18n.t('statuses.visibilities.login'))
     elsif status.private_visibility? || status.limited_visibility?
       fa_icon('lock', title: I18n.t('statuses.visibilities.private'))
     elsif status.direct_visibility?
@@ -171,11 +173,11 @@ module ApplicationHelper
   end
 
   def storage_host
-    URI::HTTPS.build(host: storage_host_name).to_s
+    "https://#{storage_host_var}"
   end
 
   def storage_host?
-    storage_host_name.present?
+    storage_host_var.present?
   end
 
   def quote_wrap(text, line_width: 80, break_sequence: "\n")
@@ -189,8 +191,8 @@ module ApplicationHelper
       text: [params[:title], params[:text], params[:url]].compact.join(' '),
     }
 
-    permit_visibilities = %w(public unlisted public_unlisted private direct)
-    permit_searchabilities = %w(public unlisted public_unlisted private direct)
+    permit_visibilities = %w(public unlisted public_unlisted login private direct)
+    permit_searchabilities = %w(public unlisted public_unlisted login private direct)
     default_privacy = current_account&.user&.setting_default_privacy
     permit_visibilities.shift(permit_visibilities.index(default_privacy) + 1) if default_privacy.present?
     state_params[:visibility] = params[:visibility] if permit_visibilities.include? params[:visibility]
@@ -246,7 +248,7 @@ module ApplicationHelper
 
   private
 
-  def storage_host_name
-    ENV.fetch('S3_ALIAS_HOST', nil) || ENV.fetch('S3_CLOUDFRONT_HOST', nil)
+  def storage_host_var
+    ENV.fetch('S3_ALIAS_HOST', nil) || ENV.fetch('S3_CLOUDFRONT_HOST', nil) || ENV.fetch('AZURE_ALIAS_HOST', nil)
   end
 end

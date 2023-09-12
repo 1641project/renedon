@@ -51,9 +51,10 @@
 #  reviewed_at                   :datetime
 #  requested_review_at           :datetime
 #  group_allow_private_message   :boolean
-#  searchability                 :integer          default("private"), not null
+#  searchability                 :integer          default("direct"), not null
 #  dissubscribable               :boolean          default(FALSE), not null
 #  settings                      :jsonb
+#  indexable                     :boolean          default(FALSE), not null
 #
 
 class Account < ApplicationRecord
@@ -66,9 +67,11 @@ class Account < ApplicationRecord
     trust_level
   )
 
-  USERNAME_RE   = /[a-z0-9_]+([a-z0-9_\.-]+[a-z0-9_]+)?/i
-  MENTION_RE    = /(?<=^|[^\/[:word:]])@((#{USERNAME_RE})(?:@[[:word:]\.\-]+[[:word:]]+)?)/i
-  URL_PREFIX_RE = /\Ahttp(s?):\/\/[^\/]+/
+  BACKGROUND_REFRESH_INTERVAL = 1.week.freeze
+
+  USERNAME_RE   = /[a-z0-9_]+([a-z0-9_.-]+[a-z0-9_]+)?/i
+  MENTION_RE    = %r{(?<=^|[^/[:word:]])@((#{USERNAME_RE})(?:@[[:word:].-]+[[:word:]]+)?)}i
+  URL_PREFIX_RE = %r{\Ahttp(s?)://[^/]+}
   USERNAME_ONLY_RE = /\A#{USERNAME_RE}\z/i
 
   include Attachmentable
@@ -83,10 +86,11 @@ class Account < ApplicationRecord
   include DomainMaterializable
   include AccountMerging
   include AccountSearch
+  include AccountStatusesSearch
 
   enum protocol: { ostatus: 0, activitypub: 1 }
   enum suspension_origin: { local: 0, remote: 1 }, _prefix: true
-  enum searchability: { public: 0, unlisted: 1, private: 2, direct: 3, limited: 4, public_unlisted: 10 }, _suffix: :searchability
+  enum searchability: { public: 0, private: 1, direct: 2, limited: 3, unsupported: 4, public_unlisted: 10 }, _suffix: :searchability
 
   validates :username, presence: true
   validates_with UniqueUsernameValidator, if: -> { will_save_change_to_username? }
@@ -94,12 +98,19 @@ class Account < ApplicationRecord
   # Remote user validations, also applies to internal actors
   validates :username, format: { with: USERNAME_ONLY_RE }, if: -> { (!local? || actor_type == 'Application') && will_save_change_to_username? }
 
+  # Remote user validations
+  validates :uri, presence: true, unless: :local?, on: :create
+
   # Local user validations
   validates :username, format: { with: /\A[a-z0-9_]+\z/i }, length: { maximum: 30 }, if: -> { local? && will_save_change_to_username? && actor_type != 'Application' }
   validates_with UnreservedUsernameValidator, if: -> { local? && will_save_change_to_username? && actor_type != 'Application' }
   validates :display_name, length: { maximum: 30 }, if: -> { local? && will_save_change_to_display_name? }
   validates :note, note_length: { maximum: 500 }, if: -> { local? && will_save_change_to_note? }
   validates :fields, length: { maximum: 6 }, if: -> { local? && will_save_change_to_fields? }
+  validates :uri, absence: true, if: :local?, on: :create
+  validates :inbox_url, absence: true, if: :local?, on: :create
+  validates :shared_inbox_url, absence: true, if: :local?, on: :create
+  validates :followers_url, absence: true, if: :local?, on: :create
 
   scope :remote, -> { where.not(domain: nil) }
   scope :local, -> { where(domain: nil) }
@@ -117,14 +128,14 @@ class Account < ApplicationRecord
   scope :matches_username, ->(value) { where('lower((username)::text) ~ lower(?)', value.to_s) }
   scope :matches_display_name, ->(value) { where(arel_table[:display_name].matches_regexp(value.to_s)) }
   scope :matches_domain, ->(value) { where(arel_table[:domain].matches("%#{value}%")) }
-  scope :without_unapproved, -> { left_outer_joins(:user).remote.or(left_outer_joins(:user).merge(User.approved.confirmed)) }
+  scope :without_unapproved, -> { left_outer_joins(:user).merge(User.approved.confirmed).or(remote) }
   scope :searchable, -> { without_unapproved.without_suspended.where(moved_to_account_id: nil) }
-  scope :discoverable, -> { searchable.without_silenced.where(discoverable: true).left_outer_joins(:account_stat) }
+  scope :discoverable, -> { searchable.without_silenced.where(discoverable: true).joins(:account_stat) }
   scope :followable_by, ->(account) { joins(arel_table.join(Follow.arel_table, Arel::Nodes::OuterJoin).on(arel_table[:id].eq(Follow.arel_table[:target_account_id]).and(Follow.arel_table[:account_id].eq(account.id))).join_sources).where(Follow.arel_table[:id].eq(nil)).joins(arel_table.join(FollowRequest.arel_table, Arel::Nodes::OuterJoin).on(arel_table[:id].eq(FollowRequest.arel_table[:target_account_id]).and(FollowRequest.arel_table[:account_id].eq(account.id))).join_sources).where(FollowRequest.arel_table[:id].eq(nil)) }
-  scope :by_recent_status, -> { order(Arel.sql('(case when account_stats.last_status_at is null then 1 else 0 end) asc, account_stats.last_status_at desc, accounts.id desc')) }
-  scope :by_recent_sign_in, -> { order(Arel.sql('(case when users.current_sign_in_at is null then 1 else 0 end) asc, users.current_sign_in_at desc, accounts.id desc')) }
+  scope :by_recent_status, -> { order(Arel.sql('account_stats.last_status_at DESC NULLS LAST')) }
+  scope :by_recent_sign_in, -> { order(Arel.sql('users.current_sign_in_at DESC NULLS LAST')) }
   scope :popular, -> { order('account_stats.followers_count desc') }
-  scope :by_domain_and_subdomains, ->(domain) { where(domain: domain).or(where(arel_table[:domain].matches("%.#{domain}"))) }
+  scope :by_domain_and_subdomains, ->(domain) { where(domain: Instance.by_domain_and_subdomains(domain).select(:domain)) }
   scope :not_excluded_by_account, ->(account) { where.not(id: account.excluded_from_timeline_account_ids) }
   scope :not_domain_blocked_by_account, ->(account) { where(arel_table[:domain].eq(nil).or(arel_table[:domain].not_in(account.excluded_from_timeline_domains))) }
 
@@ -145,6 +156,7 @@ class Account < ApplicationRecord
            :locale,
            :shows_application?,
            :prefers_noindex?,
+           :time_zone,
            to: :user,
            prefix: true,
            allow_nil: true
@@ -225,6 +237,12 @@ class Account < ApplicationRecord
     last_webfingered_at.nil? || last_webfingered_at <= 1.day.ago
   end
 
+  def schedule_refresh_if_stale!
+    return unless last_webfingered_at.present? && last_webfingered_at <= BACKGROUND_REFRESH_INTERVAL.ago
+
+    AccountRefreshWorker.perform_in(rand(6.hours.to_i), id)
+  end
+
   def refresh!
     ResolveAccountService.new.call(acct) unless local?
   end
@@ -301,6 +319,17 @@ class Account < ApplicationRecord
     user&.setting_noai || (settings.present? && settings['noai']) || false
   end
 
+  def translatable_private?
+    user&.setting_translatable_private || (settings.present? && settings['translatable_private']) || false
+  end
+
+  def link_preview?
+    return user.setting_link_preview if local? && user.present?
+    return settings['link_preview'] if settings.present? && settings.key?('link_preview')
+
+    true
+  end
+
   def public_statuses_count
     hide_statuses_count? ? 0 : statuses_count
   end
@@ -334,6 +363,41 @@ class Account < ApplicationRecord
     false
   end
 
+  def emoji_reaction_policy
+    return settings['emoji_reaction_policy']&.to_sym || :allow if settings.present?
+    return :allow if user.nil?
+
+    user.settings&.[]('emoji_reaction_policy')&.to_sym
+  end
+
+  def show_emoji_reaction?(account)
+    case emoji_reaction_policy
+    when :block_and_hide
+      false
+    when :followees_only
+      account.present? && (id == account.id || following?(account))
+    when :followers_only
+      account.present? && (id == account.id || followed_by?(account))
+    when :mutuals_only
+      account.present? && (id == account.id || mutual?(account))
+    when :outside_only
+      account.present? && (id == account.id || following?(account) || followed_by?(account))
+    else
+      true
+    end
+  end
+
+  def allow_emoji_reaction?(account)
+    return false if account.nil?
+
+    case emoji_reaction_policy
+    when :block
+      false
+    else
+      show_emoji_reaction?(account)
+    end
+  end
+
   def public_settings
     config = {
       'noindex' => noindex?,
@@ -342,6 +406,9 @@ class Account < ApplicationRecord
       'hide_statuses_count' => hide_statuses_count?,
       'hide_following_count' => hide_following_count?,
       'hide_followers_count' => hide_followers_count?,
+      'translatable_private' => translatable_private?,
+      'link_preview' => link_preview?,
+      'emoji_reaction_policy' => user&.setting_emoji_reaction_policy,
     }
     config = config.merge(settings) if settings.present?
     config
@@ -378,11 +445,11 @@ class Account < ApplicationRecord
   end
 
   def fields
-    (self[:fields] || []).map do |f|
+    (self[:fields] || []).filter_map do |f|
       Account::Field.new(self, f)
     rescue
       nil
-    end.compact
+    end
   end
 
   def fields_attributes=(attributes)
@@ -512,7 +579,20 @@ class Account < ApplicationRecord
         EntityCache.instance.mention(username, domain)
       end
     end
+
+    def inverse_alias(key, original_key)
+      define_method("#{key}=") do |value|
+        public_send("#{original_key}=", !ActiveModel::Type::Boolean.new.cast(value))
+      end
+
+      define_method(key) do
+        !public_send(original_key)
+      end
+    end
   end
+
+  inverse_alias :show_collections, :hide_collections
+  inverse_alias :unlocked, :locked
 
   def emojis
     @emojis ||= CustomEmoji.from_text(emojifiable_text, domain)
@@ -528,6 +608,10 @@ class Account < ApplicationRecord
 
     generate_keys
     save!
+  end
+
+  def compute_searchability_activitypub
+    local? ? 'public' : searchability
   end
 
   private

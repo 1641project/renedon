@@ -60,7 +60,7 @@
                 = t('antennas.index.tags', count: antenna.antenna_tags.size)
               .permissions-list__item__text__type
                 - tags = antenna.antenna_tags.map { |tag| tag.tag.name }
-                - tags = keywords.take(5) + ['…'] if tags.size > 5 # TODO
+                - tags = tags.take(5) + ['…'] if tags.size > 5 # TODO
                 = tags.join(', ')
 
   .announcements-list__item__action-bar

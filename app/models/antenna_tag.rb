@@ -14,4 +14,14 @@
 class AntennaTag < ApplicationRecord
   belongs_to :antenna
   belongs_to :tag
+
+  validate :limit_per_antenna
+
+  validates :tag_id, uniqueness: { scope: :antenna_id }
+
+  private
+
+  def limit_per_antenna
+    raise Mastodon::ValidationError, I18n.t('antennas.errors.limit.tags') if AntennaTag.where(antenna_id: antenna_id).count >= Antenna::TAGS_PER_ANTENNA_LIMIT
+  end
 end

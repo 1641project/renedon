@@ -15,6 +15,8 @@ class StatusPolicy < ApplicationPolicy
 
     if requires_mention?
       owned? || mention_exists?
+    elsif login?
+      owned? || !current_account.nil?
     elsif private?
       owned? || following_author? || mention_exists?
     else
@@ -56,6 +58,10 @@ class StatusPolicy < ApplicationPolicy
 
   def private?
     record.private_visibility?
+  end
+
+  def login?
+    record.login_visibility?
   end
 
   def public?

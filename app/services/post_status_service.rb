@@ -3,6 +3,7 @@
 class PostStatusService < BaseService
   include Redisable
   include LanguagesHelper
+  include DtlHelper
 
   MIN_SCHEDULE_OFFSET = 5.minutes.freeze
 
@@ -34,6 +35,7 @@ class PostStatusService < BaseService
   # @option [String] :idempotency Optional idempotency key
   # @option [Boolean] :with_rate_limit
   # @option [Enumerable] :allowed_mentions Optional array of expected mentioned account IDs, raises `UnexpectedMentionsError` if unexpected accounts end up in mentions
+  # @option [Enumerable] :status_reference_ids Optional array
   # @return [Status]
   def call(account, options = {})
     @account     = account
@@ -43,6 +45,7 @@ class PostStatusService < BaseService
 
     return idempotency_duplicate if idempotency_given? && idempotency_duplicate?
 
+    validate_status!
     validate_media!
     preprocess_attributes!
 
@@ -71,23 +74,60 @@ class PostStatusService < BaseService
                        @options[:sensitive]
                      end) || @options[:spoiler_text].present?
     @text         = @options.delete(:spoiler_text) if @text.blank? && @options[:spoiler_text].present?
-    @visibility   = @options[:visibility] || @account.user&.setting_default_privacy
-    @visibility   = :unlisted if (@visibility&.to_sym == :public || @visibility&.to_sym == :public_unlisted) && @account.silenced?
+    @visibility   = @options[:visibility]&.to_sym || @account.user&.setting_default_privacy&.to_sym
+    @visibility   = :direct if @in_reply_to&.limited_visibility?
+    @visibility   = :limited if %w(mutual circle).include?(@options[:visibility])
+    @visibility   = :unlisted if (@visibility&.to_sym == :public || @visibility&.to_sym == :public_unlisted || @visibility&.to_sym == :login) && @account.silenced?
     @visibility   = :public_unlisted if @visibility&.to_sym == :public && !@options[:force_visibility] && !@options[:application]&.superapp && @account.user&.setting_public_post_to_unlisted
+    @limited_scope = @options[:visibility]&.to_sym if @visibility == :limited
     @searchability = searchability
+    @searchability = :private if @account.silenced? && @searchability&.to_sym == :public
     @markdown     = @options[:markdown] || false
     @scheduled_at = @options[:scheduled_at]&.to_datetime
     @scheduled_at = nil if scheduled_in_the_past?
+    @reference_ids = (@options[:status_reference_ids] || []).map(&:to_i).filter(&:positive?)
+    load_circle
+    overwrite_dtl_post
+    process_sensitive_words
   rescue ArgumentError
     raise ActiveRecord::RecordInvalid
   end
 
+  def load_circle
+    return unless @options[:visibility] == 'circle' || (@options[:visibility] == 'limited' && @options[:circle_id].present?)
+
+    @circle = @options[:circle_id].present? && Circle.find(@options[:circle_id])
+    @limited_scope = :circle
+    raise ArgumentError if @circle.nil? || @circle.account_id != @account.id
+  end
+
+  def overwrite_dtl_post
+    return unless DTL_ENABLED
+
+    raw_tags = Extractor.extract_hashtags(@text)
+    return if raw_tags.exclude?(DTL_TAG)
+    return unless %i(public public_unlisted unlisted).include?(@visibility)
+
+    @visibility = :unlisted if @account.user&.setting_dtl_force_with_tag == :full
+    @searchability = :public if %i(full searchability).include?(@account.user&.setting_dtl_force_with_tag)
+    @dtl = true
+  end
+
+  def process_sensitive_words
+    if [:public, :public_unlisted, :login].include?(@visibility&.to_sym) && Admin::SensitiveWord.sensitive?(@text, @options[:spoiler_text] || '')
+      @text = Admin::SensitiveWord.modified_text(@text, @options[:spoiler_text])
+      @options[:spoiler_text] = I18n.t('admin.sensitive_words.alert')
+    end
+  end
+
   def searchability
+    return :private if @options[:searchability]&.to_sym == :public && @visibility&.to_sym == :unlisted && @account.user&.setting_disallow_unlisted_public_searchability
+
     case @options[:searchability]&.to_sym
     when :public
-      case @visibility&.to_sym when :public, :public_unlisted then :public when :unlisted, :private then :private else :direct end
+      case @visibility&.to_sym when :public, :public_unlisted, :login, :unlisted then :public when :private then :private else :direct end
     when :private
-      case @visibility&.to_sym when :public, :public_unlisted, :unlisted, :private then :private else :direct end
+      case @visibility&.to_sym when :public, :public_unlisted, :login, :unlisted, :private then :private else :direct end
     when :direct
       :direct
     when nil
@@ -99,7 +139,7 @@ class PostStatusService < BaseService
 
   def process_status!
     @status = @account.statuses.new(status_attributes)
-    process_mentions_service.call(@status, save_records: false)
+    process_mentions_service.call(@status, limited_type: @status.limited_visibility? ? @limited_scope : '', circle: @circle, save_records: false)
     safeguard_mentions!(@status)
 
     UpdateStatusExpirationService.new.call(@status)
@@ -108,6 +148,7 @@ class PostStatusService < BaseService
     # the media attachments when the status is created
     ApplicationRecord.transaction do
       @status.save!
+      @status.capability_tokens.create! if @status.limited_visibility?
     end
   end
 
@@ -143,13 +184,21 @@ class PostStatusService < BaseService
   end
 
   def postprocess_status!
+    @account.user.update!(settings_attributes: { default_privacy: @options[:visibility] }) if @account.user&.setting_stay_privacy && !@status.reply? && %i(public public_unlisted login unlisted private).include?(@status.visibility.to_sym) && @status.visibility.to_s != @account.user&.setting_default_privacy && !@dtl
+
     process_hashtags_service.call(@status)
+    ProcessReferencesWorker.perform_async(@status.id, @reference_ids, [])
     Trends.tags.register(@status)
     LinkCrawlWorker.perform_async(@status.id)
     DistributionWorker.perform_async(@status.id)
     ActivityPub::DistributionWorker.perform_async(@status.id)
     PollExpirationNotifyWorker.perform_at(@status.poll.expires_at, @status.poll.id) if @status.poll
     GroupReblogService.new.call(@status)
+  end
+
+  def validate_status!
+    raise Mastodon::ValidationError, I18n.t('statuses.contains_ng_words') if Admin::NgWord.reject?("#{@options[:spoiler_text]}\n#{@options[:text]}")
+    raise Mastodon::ValidationError, I18n.t('statuses.too_many_hashtags') if Admin::NgWord.hashtag_reject_with_extractor?(@options[:text])
   end
 
   def validate_media!
@@ -219,11 +268,13 @@ class PostStatusService < BaseService
       media_attachments: @media || [],
       ordered_media_attachment_ids: (@options[:media_ids] || []).map(&:to_i) & @media.map(&:id),
       thread: @in_reply_to,
+      status_reference_ids: @status_reference_ids,
       poll_attributes: poll_attributes,
       sensitive: @sensitive,
       spoiler_text: @options[:spoiler_text] || '',
       markdown: @markdown,
       visibility: @visibility,
+      limited_scope: @limited_scope || :none,
       searchability: @searchability,
       language: valid_locale_cascade(@options[:language], @account.user&.preferred_posting_language, I18n.default_locale),
       application: @options[:application],

@@ -1,3 +1,5 @@
+import { Map as ImmutableMap, List as ImmutableList, OrderedSet as ImmutableOrderedSet, fromJS } from 'immutable';
+
 import {
   COMPOSE_MOUNT,
   COMPOSE_UNMOUNT,
@@ -34,6 +36,7 @@ import {
   COMPOSE_COMPOSING_CHANGE,
   COMPOSE_EMOJI_INSERT,
   COMPOSE_EXPIRATION_INSERT,
+  COMPOSE_REFERENCE_INSERT,
   COMPOSE_UPLOAD_CHANGE_REQUEST,
   COMPOSE_UPLOAD_CHANGE_SUCCESS,
   COMPOSE_UPLOAD_CHANGE_FAIL,
@@ -44,6 +47,7 @@ import {
   COMPOSE_POLL_OPTION_CHANGE,
   COMPOSE_POLL_OPTION_REMOVE,
   COMPOSE_POLL_SETTINGS_CHANGE,
+  COMPOSE_CIRCLE_CHANGE,
   INIT_MEDIA_EDIT_MODAL,
   COMPOSE_CHANGE_MEDIA_DESCRIPTION,
   COMPOSE_CHANGE_MEDIA_FOCUS,
@@ -51,13 +55,12 @@ import {
   COMPOSE_SEARCHABILITY_CHANGE,
   COMPOSE_FOCUS,
 } from '../actions/compose';
-import { TIMELINE_DELETE } from '../actions/timelines';
-import { STORE_HYDRATE } from '../actions/store';
 import { REDRAFT } from '../actions/statuses';
-import { Map as ImmutableMap, List as ImmutableList, OrderedSet as ImmutableOrderedSet, fromJS } from 'immutable';
-import { uuid } from '../uuid';
+import { STORE_HYDRATE } from '../actions/store';
+import { TIMELINE_DELETE } from '../actions/timelines';
 import { me } from '../initial_state';
 import { unescapeHTML } from '../utils/html';
+import { uuid } from '../uuid';
 
 const initialState = ImmutableMap({
   mounted: 0,
@@ -66,6 +69,7 @@ const initialState = ImmutableMap({
   spoiler_text: '',
   markdown: false,
   privacy: null,
+  circle_id: null,
   searchability: null,
   id: null,
   text: '',
@@ -86,6 +90,7 @@ const initialState = ImmutableMap({
   suggestion_token: null,
   suggestions: ImmutableList(),
   default_privacy: 'public',
+  stay_privacy: false,
   default_searchability: 'private',
   default_sensitive: false,
   default_language: 'en',
@@ -99,6 +104,7 @@ const initialState = ImmutableMap({
     focusY: 0,
     dirty: false,
   }),
+  posted_on_this_session: false,
 });
 
 const initialPoll = ImmutableMap({
@@ -119,15 +125,24 @@ function statusToTextMentions(state, status) {
 
 function clearAll(state) {
   return state.withMutations(map => {
-    map.set('id', null);
     map.set('text', '');
     map.set('spoiler', false);
     map.set('spoiler_text', '');
     map.set('markdown', false);
     map.set('is_submitting', false);
     map.set('is_changing_upload', false);
+    if (!state.get('stay_privacy') || state.get('in_reply_to') || !state.get('posted_on_this_session') || state.get('id')) {
+      map.set('privacy', state.get('default_privacy'));
+      map.set('circle_id', null);
+    }
+    if (state.get('stay_privacy') && !state.get('in_reply_to')) {
+      map.set('default_privacy', state.get('privacy'));
+    }
+    if (!state.get('in_reply_to')) {
+      map.set('posted_on_this_session', true);
+    }
+    map.set('id', null);
     map.set('in_reply_to', null);
-    map.set('privacy', state.get('default_privacy'));
     map.set('searchability', state.get('default_searchability'));
     map.set('sensitive', state.get('default_sensitive'));
     map.set('language', state.get('default_language'));
@@ -237,8 +252,43 @@ const insertExpiration = (state, position, data) => {
   });
 };
 
+const insertReference = (state, url) => {
+  const oldText = state.get('text');
+
+  if (oldText.indexOf(`BT ${url}`) >= 0) {
+    return state;
+  }
+
+  let newLine = '\n\n';
+  if (oldText.length === 0) newLine = '';
+  else if (oldText[oldText.length - 1] === '\n') {
+    if (oldText.length === 1 || oldText[oldText.length - 2] === '\n') {
+      newLine = '';
+    } else {
+      newLine = '\n';
+    }
+  }
+
+  if (oldText.length > 0) {
+    const lastLine = oldText.slice(oldText.lastIndexOf('\n') + 1, oldText.length - 1);
+    if (lastLine.startsWith('BT ')) {
+      newLine = '\n';
+    }
+  }
+
+  const referenceText = `${newLine}BT ${url}`;
+  const text = `${oldText}${referenceText}`;
+
+  return state.merge({
+    text,
+    focusDate: new Date(),
+    caretPosition: text.length - referenceText.length,
+    idempotencyKey: uuid(),
+  });
+};
+
 const privacyPreference = (a, b) => {
-  const order = ['public', 'public_unlisted', 'unlisted', 'private', 'direct'];
+  const order = ['public', 'public_unlisted', 'unlisted', 'login', 'private', 'direct'];
   return order[Math.max(order.indexOf(a), order.indexOf(b), 0)];
 };
 
@@ -475,6 +525,8 @@ export default function compose(state = initialState, action) {
     return insertEmoji(state, action.position, action.emoji, action.needsSpace);
   case COMPOSE_EXPIRATION_INSERT:
     return insertExpiration(state, action.position, action.data);
+  case COMPOSE_REFERENCE_INSERT:
+    return insertReference(state, action.url);
   case COMPOSE_UPLOAD_CHANGE_SUCCESS:
     return state
       .set('is_changing_upload', false)
@@ -558,6 +610,8 @@ export default function compose(state = initialState, action) {
     return state.updateIn(['poll', 'options'], options => options.delete(action.index));
   case COMPOSE_POLL_SETTINGS_CHANGE:
     return state.update('poll', poll => poll.set('expires_in', action.expiresIn).set('multiple', action.isMultiple));
+  case COMPOSE_CIRCLE_CHANGE:
+    return state.set('circle_id', action.circleId);
   case COMPOSE_LANGUAGE_CHANGE:
     return state.set('language', action.language);
   case COMPOSE_FOCUS:

@@ -1,34 +1,46 @@
-import React from 'react';
-import ImmutablePropTypes from 'react-immutable-proptypes';
 import PropTypes from 'prop-types';
-import { Avatar } from './avatar';
-import { AvatarOverlay } from './avatar_overlay';
-import { RelativeTimestamp } from './relative_timestamp';
-import { DisplayName } from './display_name';
-import StatusContent from './status_content';
-import StatusActionBar from './status_action_bar';
-import StatusEmojiReactionsBar from './status_emoji_reactions_bar';
-import AttachmentList from './attachment_list';
-import Card from '../features/status/components/card';
+
 import { injectIntl, defineMessages, FormattedMessage } from 'react-intl';
-import ImmutablePureComponent from 'react-immutable-pure-component';
-import { MediaGallery, Video, Audio } from '../features/ui/util/async-components';
-import { HotKeys } from 'react-hotkeys';
+
 import classNames from 'classnames';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+import ImmutablePureComponent from 'react-immutable-pure-component';
+
+import { HotKeys } from 'react-hotkeys';
+
+import AttachmentList from 'mastodon/components/attachment_list';
 import { Icon }  from 'mastodon/components/icon';
-import { displayMedia } from '../initial_state';
 import PictureInPicturePlaceholder from 'mastodon/components/picture_in_picture_placeholder';
 
+import Card from '../features/status/components/card';
 // We use the component (and not the container) since we do not want
 // to use the progress bar to show download progress
 import Bundle from '../features/ui/components/bundle';
+import { MediaGallery, Video, Audio } from '../features/ui/util/async-components';
+import { displayMedia, enableEmojiReaction, showEmojiReactionOnTimeline } from '../initial_state';
+
+import { Avatar } from './avatar';
+import { AvatarOverlay } from './avatar_overlay';
+import { DisplayName } from './display_name';
+import { getHashtagBarForStatus } from './hashtag_bar';
+import { RelativeTimestamp } from './relative_timestamp';
+import StatusActionBar from './status_action_bar';
+import StatusContent from './status_content';
+import StatusEmojiReactionsBar from './status_emoji_reactions_bar';
+
+const domParser = new DOMParser();
 
 export const textForScreenReader = (intl, status, rebloggedByText = false) => {
   const displayName = status.getIn(['account', 'display_name']);
 
+  const spoilerText = status.getIn(['translation', 'spoiler_text']) || status.get('spoiler_text');
+  const contentHtml = status.getIn(['translation', 'contentHtml']) || status.get('contentHtml');
+  const contentText = domParser.parseFromString(contentHtml, 'text/html').documentElement.textContent;
+
   const values = [
     displayName.length === 0 ? status.getIn(['account', 'acct']).split('@')[0] : displayName,
-    status.get('spoiler_text') && status.get('hidden') ? status.get('spoiler_text') : status.get('search_index').slice(status.get('spoiler_text').length),
+    spoilerText && status.get('hidden') ? spoilerText : contentText,
     intl.formatDate(status.get('created_at'), { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
     status.getIn(['account', 'acct']),
   ];
@@ -56,7 +68,11 @@ const messages = defineMessages({
   public_short: { id: 'privacy.public.short', defaultMessage: 'Public' },
   unlisted_short: { id: 'privacy.unlisted.short', defaultMessage: 'Unlisted' },
   public_unlisted_short: { id: 'privacy.public_unlisted.short', defaultMessage: 'Public unlisted' },
-  private_short: { id: 'privacy.private.short', defaultMessage: 'Followers-only' },
+  login_short: { id: 'privacy.login.short', defaultMessage: 'Login only' },
+  private_short: { id: 'privacy.private.short', defaultMessage: 'Followers only' },
+  limited_short: { id: 'privacy.limited.short', defaultMessage: 'Limited menbers only' },
+  mutual_short: { id: 'privacy.mutual.short', defaultMessage: 'Mutual followers only' },
+  circle_short: { id: 'privacy.circle.short', defaultMessage: 'Circle members only' },
   direct_short: { id: 'privacy.direct.short', defaultMessage: 'Mentioned people only' },
   edited: { id: 'status.edited', defaultMessage: 'Edited {date}' },
 });
@@ -186,26 +202,46 @@ class Status extends ImmutablePureComponent {
     this.props.onTranslate(this._properStatus());
   };
 
-  renderLoadingMediaGallery () {
-    return <div className='media-gallery' style={{ height: '110px' }} />;
+  getAttachmentAspectRatio () {
+    const attachments = this._properStatus().get('media_attachments');
+
+    if (attachments.getIn([0, 'type']) === 'video') {
+      return `${attachments.getIn([0, 'meta', 'original', 'width'])} / ${attachments.getIn([0, 'meta', 'original', 'height'])}`;
+    } else if (attachments.getIn([0, 'type']) === 'audio') {
+      return '16 / 9';
+    } else {
+      return (attachments.size === 1 && attachments.getIn([0, 'meta', 'small', 'aspect'])) ? attachments.getIn([0, 'meta', 'small', 'aspect']) : '3 / 2'
+    }
   }
 
-  renderLoadingVideoPlayer () {
-    return <div className='video-player' style={{ height: '110px' }} />;
-  }
+  renderLoadingMediaGallery = () => {
+    return (
+      <div className='media-gallery' style={{ aspectRatio: this.getAttachmentAspectRatio() }} />
+    );
+  };
 
-  renderLoadingAudioPlayer () {
-    return <div className='audio-player' style={{ height: '110px' }} />;
-  }
+  renderLoadingVideoPlayer = () => {
+    return (
+      <div className='video-player' style={{ aspectRatio: this.getAttachmentAspectRatio() }} />
+    );
+  };
+
+  renderLoadingAudioPlayer = () => {
+    return (
+      <div className='audio-player' style={{ aspectRatio: this.getAttachmentAspectRatio() }} />
+    );
+  };
 
   handleOpenVideo = (options) => {
     const status = this._properStatus();
-    this.props.onOpenVideo(status.get('id'), status.getIn(['media_attachments', 0]), status.get('language'), options);
+    const lang = status.getIn(['translation', 'language']) || status.get('language');
+    this.props.onOpenVideo(status.get('id'), status.getIn(['media_attachments', 0]), lang, options);
   };
 
   handleOpenMedia = (media, index) => {
     const status = this._properStatus();
-    this.props.onOpenMedia(status.get('id'), media, index, status.get('language'));
+    const lang = status.getIn(['translation', 'language']) || status.get('language');
+    this.props.onOpenMedia(status.get('id'), media, index, lang);
   };
 
   handleHotkeyOpenMedia = e => {
@@ -215,7 +251,7 @@ class Status extends ImmutablePureComponent {
     e.preventDefault();
 
     if (status.get('media_attachments').size > 0) {
-      const lang = status.get('language');
+      const lang = status.getIn(['translation', 'language']) || status.get('language');
       if (status.getIn(['media_attachments', 0, 'type']) === 'video') {
         onOpenVideo(status.get('id'), status.getIn(['media_attachments', 0]), lang, { startTime: 0 });
       } else {
@@ -342,7 +378,7 @@ class Status extends ImmutablePureComponent {
       openMedia: this.handleHotkeyOpenMedia,
     };
 
-    let media, statusAvatar, prepend, rebloggedByText;
+    let media, isCardMediaWithSensitive, statusAvatar, prepend, rebloggedByText;
 
     if (hidden) {
       return (
@@ -364,11 +400,15 @@ class Status extends ImmutablePureComponent {
       'public': { icon: 'globe', text: intl.formatMessage(messages.public_short) },
       'unlisted': { icon: 'unlock', text: intl.formatMessage(messages.unlisted_short) },
       'public_unlisted': { icon: 'cloud', text: intl.formatMessage(messages.public_unlisted_short) },
+      'login': { icon: 'key', text: intl.formatMessage(messages.login_short) },
       'private': { icon: 'lock', text: intl.formatMessage(messages.private_short) },
+      'limited': { icon: 'get-pocket', text: intl.formatMessage(messages.limited_short) },
+      'mutual': { icon: 'exchange', text: intl.formatMessage(messages.mutual_short) },
+      'circle': { icon: 'user-circle', text: intl.formatMessage(messages.circle_short) },
       'direct': { icon: 'at', text: intl.formatMessage(messages.direct_short) },
     };
 
-    let visibilityIcon = visibilityIconInfo[status.get('visibility_ex')] || visibilityIconInfo[status.get('visibility')];
+    let visibilityIcon = visibilityIconInfo[status.get('limited_scope') || status.get('visibility_ex')] || visibilityIconInfo[status.get('visibility')];
 
     if (this.state.forceFilter === undefined ? matchedFilters : this.state.forceFilter) {
       const minHandlers = this.props.muted ? {} : {
@@ -429,9 +469,13 @@ class Status extends ImmutablePureComponent {
       );
     }
 
+    isCardMediaWithSensitive = false;
+
     if (pictureInPicture.get('inUse')) {
-      media = <PictureInPicturePlaceholder />;
+      media = <PictureInPicturePlaceholder aspectRatio={this.getAttachmentAspectRatio()} />;
     } else if (status.get('media_attachments').size > 0) {
+      const language = status.getIn(['translation', 'language']) || status.get('language');
+
       if (this.props.muted) {
         media = (
           <AttachmentList
@@ -441,14 +485,15 @@ class Status extends ImmutablePureComponent {
         );
       } else if (status.getIn(['media_attachments', 0, 'type']) === 'audio') {
         const attachment = status.getIn(['media_attachments', 0]);
+        const description = attachment.getIn(['translation', 'description']) || attachment.get('description');
 
         media = (
           <Bundle fetchComponent={Audio} loading={this.renderLoadingAudioPlayer} >
             {Component => (
               <Component
                 src={attachment.get('url')}
-                alt={attachment.get('description')}
-                lang={status.get('language')}
+                alt={description}
+                lang={language}
                 poster={attachment.get('preview_url') || status.getIn(['account', 'avatar_static'])}
                 backgroundColor={attachment.getIn(['meta', 'colors', 'background'])}
                 foregroundColor={attachment.getIn(['meta', 'colors', 'foreground'])}
@@ -468,6 +513,7 @@ class Status extends ImmutablePureComponent {
         );
       } else if (status.getIn(['media_attachments', 0, 'type']) === 'video') {
         const attachment = status.getIn(['media_attachments', 0]);
+        const description = attachment.getIn(['translation', 'description']) || attachment.get('description');
 
         media = (
           <Bundle fetchComponent={Video} loading={this.renderLoadingVideoPlayer} >
@@ -475,11 +521,11 @@ class Status extends ImmutablePureComponent {
               <Component
                 preview={attachment.get('preview_url')}
                 frameRate={attachment.getIn(['meta', 'original', 'frame_rate'])}
+                aspectRatio={`${attachment.getIn(['meta', 'original', 'width'])} / ${attachment.getIn(['meta', 'original', 'height'])}`}
                 blurhash={attachment.get('blurhash')}
                 src={attachment.get('url')}
-                alt={attachment.get('description')}
-                lang={status.get('language')}
-                inline
+                alt={description}
+                lang={language}
                 sensitive={status.get('sensitive')}
                 onOpenVideo={this.handleOpenVideo}
                 deployPictureInPicture={pictureInPicture.get('available') ? this.handleDeployPictureInPicture : undefined}
@@ -495,7 +541,7 @@ class Status extends ImmutablePureComponent {
             {Component => (
               <Component
                 media={status.get('media_attachments')}
-                lang={status.get('language')}
+                lang={language}
                 sensitive={status.get('sensitive')}
                 height={110}
                 onOpenMedia={this.handleOpenMedia}
@@ -508,15 +554,16 @@ class Status extends ImmutablePureComponent {
           </Bundle>
         );
       }
-    } else if (status.get('spoiler_text').length === 0 && status.get('card') && !this.props.muted) {
+    } else if (status.get('card') && !this.props.muted) {
       media = (
         <Card
           onOpenMedia={this.handleOpenMedia}
           card={status.get('card')}
           compact
-          sensitive={status.get('sensitive')}
+          sensitive={status.get('sensitive') && !status.get('spoiler_text')}
         />
       );
+      isCardMediaWithSensitive = status.get('spoiler_text').length > 0;
     }
 
     if (account === undefined || account === null) {
@@ -525,19 +572,22 @@ class Status extends ImmutablePureComponent {
       statusAvatar = <AvatarOverlay account={status.get('account')} friend={account} />;
     }
 
-    visibilityIcon = visibilityIconInfo[status.get('visibility_ex')] || visibilityIconInfo[status.get('visibility')];
+    visibilityIcon = visibilityIconInfo[status.get('limited_scope') || status.get('visibility_ex')] || visibilityIconInfo[status.get('visibility')];
 
     let emojiReactionsBar = null;
     if (!this.props.withoutEmojiReactions && status.get('emoji_reactions')) {
       const emojiReactions = status.get('emoji_reactions');
-      if (emojiReactions.size > 0) {
-        emojiReactionsBar = <StatusEmojiReactionsBar emojiReactions={emojiReactions} status={status} onEmojiReact={this.props.onEmojiReact} onUnEmojiReact={this.props.onUnEmojiReact} />;
+      if (emojiReactions.size > 0 && enableEmojiReaction) {
+        emojiReactionsBar = <StatusEmojiReactionsBar emojiReactions={emojiReactions} myReactionOnly={!showEmojiReactionOnTimeline} status={status} onEmojiReact={this.props.onEmojiReact} onUnEmojiReact={this.props.onUnEmojiReact} />;
       }
     }
 
+    const {statusContentProps, hashtagBar} = getHashtagBarForStatus(status);
+    const expanded = !status.get('hidden')
+
     return (
       <HotKeys handlers={handlers}>
-        <div className={classNames('status__wrapper', `status__wrapper-${status.get('visibility_ex')}`, { 'status__wrapper-reply': !!status.get('in_reply_to_id'), unread, focusable: !this.props.muted })} tabIndex={this.props.muted ? null : 0} data-featured={featured ? 'true' : null} aria-label={textForScreenReader(intl, status, rebloggedByText)} ref={this.handleRef}>
+        <div className={classNames('status__wrapper', `status__wrapper-${status.get('visibility_ex')}`, { 'status__wrapper-reply': !!status.get('in_reply_to_id'), unread, focusable: !this.props.muted })} tabIndex={this.props.muted ? null : 0} data-featured={featured ? 'true' : null} aria-label={textForScreenReader(intl, status, rebloggedByText)} ref={this.handleRef} data-nosnippet={status.getIn(['account', 'noindex'], true) || undefined}>
           {prepend}
 
           <div className={classNames('status', `status-${status.get('visibility_ex')}`, { 'status-reply': !!status.get('in_reply_to_id'), 'status--in-thread': !!rootId, 'status--first-in-thread': previousId && (!connectUp || connectToRoot), muted: this.props.muted })} data-id={status.get('id')}>
@@ -562,14 +612,17 @@ class Status extends ImmutablePureComponent {
             <StatusContent
               status={status}
               onClick={this.handleClick}
-              expanded={!status.get('hidden')}
+              expanded={expanded}
               onExpandedToggle={this.handleExpandedToggle}
               onTranslate={this.handleTranslate}
               collapsible
               onCollapsedToggle={this.handleCollapsedToggle}
+              {...statusContentProps}
             />
 
-            {media}
+            {(!isCardMediaWithSensitive || !status.get('hidden')) && media}
+
+            {(!status.get('spoiler_text') || expanded) && hashtagBar}
 
             {emojiReactionsBar}
 

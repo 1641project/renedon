@@ -1,9 +1,12 @@
+import { defineMessages } from 'react-intl';
+
 import axios from 'axios';
 import { throttle } from 'lodash';
-import { defineMessages } from 'react-intl';
+
 import api from 'mastodon/api';
 import { search as emojiSearch } from 'mastodon/features/emoji/emoji_mart_search_light';
 import { tagHistory } from 'mastodon/settings';
+
 import { showAlert, showAlertForError } from './alerts';
 import { useEmoji } from './emojis';
 import { importFetchedAccounts, importFetchedStatus } from './importer';
@@ -59,6 +62,7 @@ export const COMPOSE_LANGUAGE_CHANGE     = 'COMPOSE_LANGUAGE_CHANGE';
 
 export const COMPOSE_EMOJI_INSERT = 'COMPOSE_EMOJI_INSERT';
 export const COMPOSE_EXPIRATION_INSERT = 'COMPOSE_EXPIRATION_INSERT';
+export const COMPOSE_REFERENCE_INSERT = 'COMPOSE_REFERENCE_INSERT';
 
 export const COMPOSE_UPLOAD_CHANGE_REQUEST     = 'COMPOSE_UPLOAD_UPDATE_REQUEST';
 export const COMPOSE_UPLOAD_CHANGE_SUCCESS     = 'COMPOSE_UPLOAD_UPDATE_SUCCESS';
@@ -71,6 +75,8 @@ export const COMPOSE_POLL_OPTION_CHANGE   = 'COMPOSE_POLL_OPTION_CHANGE';
 export const COMPOSE_POLL_OPTION_REMOVE   = 'COMPOSE_POLL_OPTION_REMOVE';
 export const COMPOSE_POLL_SETTINGS_CHANGE = 'COMPOSE_POLL_SETTINGS_CHANGE';
 
+export const COMPOSE_CIRCLE_CHANGE = 'COMPOSE_CIRCLE_CHANGE';
+
 export const INIT_MEDIA_EDIT_MODAL = 'INIT_MEDIA_EDIT_MODAL';
 
 export const COMPOSE_CHANGE_MEDIA_DESCRIPTION = 'COMPOSE_CHANGE_MEDIA_DESCRIPTION';
@@ -82,6 +88,9 @@ export const COMPOSE_FOCUS = 'COMPOSE_FOCUS';
 const messages = defineMessages({
   uploadErrorLimit: { id: 'upload_error.limit', defaultMessage: 'File upload limit exceeded.' },
   uploadErrorPoll:  { id: 'upload_error.poll', defaultMessage: 'File upload not allowed with polls.' },
+  open: { id: 'compose.published.open', defaultMessage: 'Open' },
+  published: { id: 'compose.published.body', defaultMessage: 'Post published.' },
+  saved: { id: 'compose.saved.body', defaultMessage: 'Post saved.' },
 });
 
 export const ensureComposeIsVisible = (getState, routerHistory) => {
@@ -129,13 +138,13 @@ export function resetCompose() {
   };
 }
 
-export const focusCompose = (routerHistory, defaultText) => dispatch => {
+export const focusCompose = (routerHistory, defaultText) => (dispatch, getState) => {
   dispatch({
     type: COMPOSE_FOCUS,
     defaultText,
   });
 
-  ensureComposeIsVisible(routerHistory);
+  ensureComposeIsVisible(getState, routerHistory);
 };
 
 export function mentionCompose(account, routerHistory) {
@@ -200,11 +209,12 @@ export function submitCompose(routerHistory) {
         in_reply_to_id: getState().getIn(['compose', 'in_reply_to'], null),
         media_ids: media.map(item => item.get('id')),
         media_attributes,
-        sensitive: getState().getIn(['compose', 'sensitive']),
+        sensitive: media.size > 0 ? getState().getIn(['compose', 'sensitive']) : false,
         spoiler_text: getState().getIn(['compose', 'spoiler']) ? getState().getIn(['compose', 'spoiler_text'], '') : '',
         markdown: getState().getIn(['compose', 'markdown']),
         visibility: getState().getIn(['compose', 'privacy']),
         searchability: getState().getIn(['compose', 'searchability']),
+        circle_id: getState().getIn(['compose', 'circle_id']),
         poll: getState().getIn(['compose', 'poll'], null),
         language: getState().getIn(['compose', 'language']),
       },
@@ -242,6 +252,13 @@ export function submitCompose(routerHistory) {
         insertIfOnline('public');
         insertIfOnline(`account:${response.data.account.id}`);
       }
+
+      dispatch(showAlert({
+        message: statusId === null ? messages.published : messages.saved,
+        action: messages.open,
+        dismissAfter: 10000,
+        onClick: () => routerHistory.push(`/@${response.data.account.username}/${response.data.id}`),
+      }));
     }).catch(function (error) {
       dispatch(submitComposeFail(error));
     });
@@ -271,13 +288,14 @@ export function submitComposeFail(error) {
 export function uploadCompose(files) {
   return function (dispatch, getState) {
     const uploadLimit = 4;
-    const media  = getState().getIn(['compose', 'media_attachments']);
-    const pending  = getState().getIn(['compose', 'pending_media_attachments']);
+    const media = getState().getIn(['compose', 'media_attachments']);
+    const pending = getState().getIn(['compose', 'pending_media_attachments']);
     const progress = new Array(files.length).fill(0);
+
     let total = Array.from(files).reduce((a, v) => a + v.size, 0);
 
     if (files.length + media.size + pending > uploadLimit) {
-      dispatch(showAlert(undefined, messages.uploadErrorLimit));
+      dispatch(showAlert({ message: messages.uploadErrorLimit }));
       return;
     }
 
@@ -378,7 +396,10 @@ export function initMediaEditModal(id) {
       id,
     });
 
-    dispatch(openModal('FOCAL_POINT', { id }));
+    dispatch(openModal({
+      modalType: 'FOCAL_POINT',
+      modalProps: { id },
+    }));
   };
 }
 
@@ -764,6 +785,14 @@ export function insertExpirationCompose(position, data) {
   };
 }
 
+export function insertReferenceCompose(position, url) {
+  return {
+    type: COMPOSE_REFERENCE_INSERT,
+    position,
+    url,
+  };
+}
+
 export function changeComposing(value) {
   return {
     type: COMPOSE_COMPOSING_CHANGE,
@@ -810,5 +839,12 @@ export function changePollSettings(expiresIn, isMultiple) {
     type: COMPOSE_POLL_SETTINGS_CHANGE,
     expiresIn,
     isMultiple,
+  };
+}
+
+export function changeCircle(circleId) {
+  return {
+    type: COMPOSE_CIRCLE_CHANGE,
+    circleId,
   };
 }

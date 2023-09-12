@@ -1,4 +1,3 @@
----
 sco:
   activerecord:
     attributes:
@@ -126,7 +125,6 @@ sco:
         bookmarks: Buikmairks
         conversations: Conversations
         crypto: En-tae-en encryption
-        favourites: Favourites
         filters: Filters
         follows: Follaes
         lists: Lists
@@ -145,12 +143,12 @@ sco:
       application:
         title: OAuth authorization requirit
     scopes:
-      admin:read: read aw data on the server
-      admin:read:accounts: read sensitive information fae aw accoonts
-      admin:read:reports: read sensitive information fae aw clyped an clyped on accoonts
-      admin:write: modify aw data on the server
-      admin:write:accounts: perform moderation actions on accoonts
-      admin:write:reports: perform moderation actions on clypes
+      "admin:read": read aw data on the server
+      "admin:read:accounts": read sensitive information fae aw accoonts
+      "admin:read:reports": read sensitive information fae aw clyped an clyped on accoonts
+      "admin:write": modify aw data on the server
+      "admin:write:accounts": perform moderation actions on accoonts
+      "admin:write:reports": perform moderation actions on clypes
       crypto: uise en-tae-en encryption
       follow: modify accoont relationships
       push: get yer push notifications
@@ -158,7 +156,6 @@ sco:
       read:accounts: see accoonts information
       read:blocks: see yer dingies
       read:bookmarks: see yer buikmairks
-      read:favourites: see yer favourites
       read:filters: see yer filters
       read:follows: see yer follaes
       read:lists: see yer lists
@@ -172,7 +169,6 @@ sco:
       write:blocks: dingie accoonts an domains
       write:bookmarks: buikmairk posts
       write:conversations: wheesht an delete conversations
-      write:favourites: favourite posts
       write:filters: mak filters
       write:follows: follae fowk
       write:lists: mak lists

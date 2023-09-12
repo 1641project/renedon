@@ -6,19 +6,18 @@ class DeliveryEmojiReactionWorker
   include Lockable
   include AccountScope
 
-  def perform(payload_json, status_id, my_account_id = nil)
-    redis.publish("timeline:#{my_account_id}", payload_json) if my_account_id.present? && !Account.find(my_account_id)&.user&.setting_stop_emoji_reaction_streaming
-
-    status = Status.find(status_id.to_i)
+  def perform(payload_json, emoji_reaction_id, _status_id, _my_account_id = nil)
+    emoji_reaction = EmojiReaction.find(emoji_reaction_id)
+    status = emoji_reaction&.status
 
     if status.present?
-      scope_status(status).includes(:user).find_each do |account|
-        redis.publish("timeline:#{account.id}", payload_json) if !account.user&.setting_stop_emoji_reaction_streaming && redis.exists?("subscribed:timeline:#{account.id}")
-      end
+      return if status.account.excluded_from_timeline_domains.include?(emoji_reaction.account.domain)
 
-      if [:public, :unlisted, :public_unlisted].exclude?(status.visibility.to_sym) && status.account_id != my_account_id &&
-         redis.exists?("subscribed:timeline:#{status.account_id}") && !status.account.user&.setting_stop_emoji_reaction_streaming
-        redis.publish("timeline:#{status.account_id}", payload_json)
+      scope_status(status).includes(:user).find_each do |account|
+        next unless (account.user.nil? || (!account.user&.setting_stop_emoji_reaction_streaming && !account.user&.setting_enable_emoji_reaction)) && redis.exists?("subscribed:timeline:#{account.id}")
+        next if account.excluded_from_timeline_domains.include?(emoji_reaction.account.domain)
+
+        redis.publish("timeline:#{account.id}", payload_json)
       end
     end
 

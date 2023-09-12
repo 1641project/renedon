@@ -1,4 +1,4 @@
-import React from 'react';
+import { PureComponent } from 'react';
 
 import classNames from 'classnames';
 
@@ -24,15 +24,15 @@ interface Props {
   overlay: boolean;
   tabIndex: number;
   counter?: number;
-  obfuscateCount?: boolean;
   href?: string;
   ariaHidden: boolean;
+  data_id?: string;
 }
 interface States {
   activate: boolean;
   deactivate: boolean;
 }
-export class IconButton extends React.PureComponent<Props, States> {
+export class IconButton extends PureComponent<Props, States> {
   static defaultProps = {
     size: 18,
     active: false,
@@ -105,9 +105,9 @@ export class IconButton extends React.PureComponent<Props, States> {
       tabIndex,
       title,
       counter,
-      obfuscateCount,
       href,
       ariaHidden,
+      data_id,
     } = this.props;
 
     const { activate, deactivate } = this.state;
@@ -127,14 +127,14 @@ export class IconButton extends React.PureComponent<Props, States> {
     }
 
     let contents = (
-      <React.Fragment>
+      <>
         <Icon id={icon} fixedWidth aria-hidden='true' />{' '}
         {typeof counter !== 'undefined' && (
           <span className='icon-button__counter'>
-            <AnimatedNumber value={counter} obfuscate={obfuscateCount} />
+            <AnimatedNumber value={counter} />
           </span>
         )}
-      </React.Fragment>
+      </>
     );
 
     if (href != null) {
@@ -160,6 +160,7 @@ export class IconButton extends React.PureComponent<Props, States> {
         style={style}
         tabIndex={tabIndex}
         disabled={disabled}
+        data-id={data_id}
       >
         {contents}
       </button>

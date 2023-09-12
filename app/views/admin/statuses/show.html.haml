@@ -1,6 +1,3 @@
-- content_for :header_tags do
-  = javascript_pack_tag 'admin', async: true, crossorigin: 'anonymous'
-
 - content_for :page_title do
   = t('statuses.title', name: display_name(@account), quote: truncate(@status.spoiler_text.presence || @status.text, length: 50, omission: '…', escape: false))
 
@@ -45,7 +42,7 @@
         %th= t('admin.statuses.favourites')
         %td= friendly_number_to_human @status.favourites_count
 
-%div.action-buttons
+.action-buttons
   %div
     - if @account.local?
       = link_to t('admin.statuses.remove_history'), remove_history_admin_account_status_path(@account.id), data: { confirm: t('admin.statuses.are_you_sure') }, method: :post, class: 'button' if can?(:warn, @account)

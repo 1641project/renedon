@@ -1,19 +1,12 @@
+import { Map as ImmutableMap, OrderedSet as ImmutableOrderedSet } from 'immutable';
+
 import {
-  FAVOURITED_STATUSES_FETCH_REQUEST,
-  FAVOURITED_STATUSES_FETCH_SUCCESS,
-  FAVOURITED_STATUSES_FETCH_FAIL,
-  FAVOURITED_STATUSES_EXPAND_REQUEST,
-  FAVOURITED_STATUSES_EXPAND_SUCCESS,
-  FAVOURITED_STATUSES_EXPAND_FAIL,
-} from '../actions/favourites';
+  ACCOUNT_BLOCK_SUCCESS,
+  ACCOUNT_MUTE_SUCCESS,
+} from '../actions/accounts';
 import {
-  EMOJI_REACTED_STATUSES_FETCH_REQUEST,
-  EMOJI_REACTED_STATUSES_FETCH_SUCCESS,
-  EMOJI_REACTED_STATUSES_FETCH_FAIL,
-  EMOJI_REACTED_STATUSES_EXPAND_REQUEST,
-  EMOJI_REACTED_STATUSES_EXPAND_SUCCESS,
-  EMOJI_REACTED_STATUSES_EXPAND_FAIL,
-} from '../actions/emoji_reactions';
+  BOOKMARK_CATEGORY_EDITOR_ADD_SUCCESS,
+} from '../actions/bookmark_categories';
 import {
   BOOKMARKED_STATUSES_FETCH_REQUEST,
   BOOKMARKED_STATUSES_FETCH_SUCCESS,
@@ -23,17 +16,21 @@ import {
   BOOKMARKED_STATUSES_EXPAND_FAIL,
 } from '../actions/bookmarks';
 import {
-  PINNED_STATUSES_FETCH_SUCCESS,
-} from '../actions/pin_statuses';
+  EMOJI_REACTED_STATUSES_FETCH_REQUEST,
+  EMOJI_REACTED_STATUSES_FETCH_SUCCESS,
+  EMOJI_REACTED_STATUSES_FETCH_FAIL,
+  EMOJI_REACTED_STATUSES_EXPAND_REQUEST,
+  EMOJI_REACTED_STATUSES_EXPAND_SUCCESS,
+  EMOJI_REACTED_STATUSES_EXPAND_FAIL,
+} from '../actions/emoji_reactions';
 import {
-  TRENDS_STATUSES_FETCH_REQUEST,
-  TRENDS_STATUSES_FETCH_SUCCESS,
-  TRENDS_STATUSES_FETCH_FAIL,
-  TRENDS_STATUSES_EXPAND_REQUEST,
-  TRENDS_STATUSES_EXPAND_SUCCESS,
-  TRENDS_STATUSES_EXPAND_FAIL,
-} from '../actions/trends';
-import { Map as ImmutableMap, OrderedSet as ImmutableOrderedSet } from 'immutable';
+  FAVOURITED_STATUSES_FETCH_REQUEST,
+  FAVOURITED_STATUSES_FETCH_SUCCESS,
+  FAVOURITED_STATUSES_FETCH_FAIL,
+  FAVOURITED_STATUSES_EXPAND_REQUEST,
+  FAVOURITED_STATUSES_EXPAND_SUCCESS,
+  FAVOURITED_STATUSES_EXPAND_FAIL,
+} from '../actions/favourites';
 import {
   FAVOURITE_SUCCESS,
   UNFAVOURITE_SUCCESS,
@@ -45,9 +42,18 @@ import {
   UNPIN_SUCCESS,
 } from '../actions/interactions';
 import {
-  ACCOUNT_BLOCK_SUCCESS,
-  ACCOUNT_MUTE_SUCCESS,
-} from '../actions/accounts';
+  PINNED_STATUSES_FETCH_SUCCESS,
+} from '../actions/pin_statuses';
+import {
+  TRENDS_STATUSES_FETCH_REQUEST,
+  TRENDS_STATUSES_FETCH_SUCCESS,
+  TRENDS_STATUSES_FETCH_FAIL,
+  TRENDS_STATUSES_EXPAND_REQUEST,
+  TRENDS_STATUSES_EXPAND_SUCCESS,
+  TRENDS_STATUSES_EXPAND_FAIL,
+} from '../actions/trends';
+
+
 
 const initialState = ImmutableMap({
   favourites: ImmutableMap({
@@ -95,11 +101,15 @@ const appendToList = (state, listType, statuses, next) => {
 };
 
 const prependOneToList = (state, listType, status) => {
+  return prependOneToListById(state, listType, status.get('id'));
+};
+
+const prependOneToListById = (state, listType, statusId) => {
   return state.updateIn([listType, 'items'], (list) => {
-    if (list.includes(status.get('id'))) {
+    if (list.includes(statusId)) {
       return list;
     } else {
-      return ImmutableOrderedSet([status.get('id')]).union(list);
+      return ImmutableOrderedSet([statusId]).union(list);
     }
   });
 };
@@ -160,6 +170,8 @@ export default function statusLists(state = initialState, action) {
     return removeOneFromList(state, 'emoji_reactions', action.status);
   case BOOKMARK_SUCCESS:
     return prependOneToList(state, 'bookmarks', action.status);
+  case BOOKMARK_CATEGORY_EDITOR_ADD_SUCCESS:
+    return prependOneToListById(state, 'bookmarks', action.statusId);
   case UNBOOKMARK_SUCCESS:
     return removeOneFromList(state, 'bookmarks', action.status);
   case PINNED_STATUSES_FETCH_SUCCESS:

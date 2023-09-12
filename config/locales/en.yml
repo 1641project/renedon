@@ -314,6 +314,7 @@ en:
       unpublish: Unpublish
       unpublished_msg: Announcement successfully unpublished!
       updated_msg: Announcement successfully updated!
+    critical_update_pending: Critical update pending
     custom_emojis:
       assign_category: Assign category
       by_domain: Domain
@@ -387,6 +388,15 @@ en:
       undo: Disallow federation with domain
     domain_blocks:
       add_new: Add new domain block
+      confirm_suspension:
+        cancel: Cancel
+        confirm: Suspend
+        permanent_action: Undoing the suspension will not restore any data or relationship.
+        preamble_html: You are about to suspend <strong>%{domain}</strong> and its subdomains.
+        remove_all_data: This will remove all content, media, and profile data for this domain's accounts from your server.
+        stop_communication: Your server will stop communicating with these servers.
+        title: Confirm domain block for %{domain}
+        undo_relationships: This will undo any follow relationship between accounts of these servers and yours.
       created_msg: Domain block is now being processed
       destroyed_msg: Domain block has been undone
       detect_invalid_subscription: 不正な購読を行うサーバーとしてマークする
@@ -586,6 +596,13 @@ en:
       title: IP rules
     media_attachments:
       title: Media attachments
+    ng_words:
+      hide_local_users_for_anonymous: Hide timeline local user posts from anonymous
+      keywords: Reject keywords
+      keywords_hint: The first character of the line is "?". to use regular expressions
+      post_hash_tags_max: Hash tags max for posts
+      test_error: Testing is returned any errors
+      title: NG words and against spams
     relationships:
       title: "%{acct}'s relationships"
     relays:
@@ -758,6 +775,13 @@ en:
       edit: Edit rule
       empty: No server rules have been defined yet.
       title: Server rules
+    sensitive_words:
+      alert: This post contains sensitive words, so alert added
+      hint: This keywords is applied to public posts only..
+      keywords: Sensitive keywords
+      keywords_for_all: Sensitive keywords (Contains CW alert)
+      keywords_for_all_hint: The first character of the line is "?". to use regular expressions
+      title: Sensitive words and moderation options
     settings:
       about:
         manage_rules: Manage server rules
@@ -800,10 +824,27 @@ en:
           approved: Approval required for sign up
           none: Nobody can sign up
           open: Anyone can sign up
-      title: Server Settings
+      security:
+        authorized_fetch: Require authentication from federated servers
+        authorized_fetch_hint: Requiring authentication from federated servers enables stricter enforcement of both user-level and server-level blocks. However, this comes at the cost of a performance penalty, reduces the reach of your replies, and may introduce compatibility issues with some federated services. In addition, this will not prevent dedicated actors from fetching your public posts and accounts.
+        authorized_fetch_overridden_hint: You are currently unable to change this setting because it is overridden by an environment variable.
+        federation_authentication: Federation authentication enforcement
+      title: Server settings
     site_uploads:
       delete: Delete uploaded file
       destroyed_msg: Site upload successfully deleted!
+    software_updates:
+      critical_update: Critical — please update quickly
+      description: It is recommended to keep your Mastodon installation up to date to benefit from the latest fixes and features. Moreover, it is sometimes critical to update Mastodon in a timely manner to avoid security issues. For these reasons, Mastodon checks for updates every 30 minutes, and will notify you according to your e-mail notification preferences.
+      documentation_link: Learn more
+      release_notes: Release notes
+      title: Available updates
+      type: Type
+      types:
+        major: Major release
+        minor: Minor release
+        patch: Patch release — bugfixes and easy to apply changes
+      version: Version
     statuses:
       account: Author
       application: Application
@@ -851,6 +892,20 @@ en:
     system_checks:
       database_schema_check:
         message_html: There are pending database migrations. Please run them to ensure the application behaves as expected
+      elasticsearch_health_red:
+        message_html: Elasticsearch cluster is unhealthy (red status), search features are unavailable
+      elasticsearch_health_yellow:
+        message_html: Elasticsearch cluster is unhealthy (yellow status), you may want to investigate the reason
+      elasticsearch_index_mismatch:
+        message_html: Elasticsearch index mappings are outdated. Please run <code>tootctl search deploy --only=%{value}</code>
+      elasticsearch_preset:
+        action: See documentation
+        message_html: Your Elasticsearch cluster has more than one node, but Mastodon is not configured to use them.
+      elasticsearch_preset_single_node:
+        action: See documentation
+        message_html: Your Elasticsearch cluster has only one node, <code>ES_PRESET</code> should be set to <code>single_node_cluster</code>.
+      elasticsearch_reset_chewy:
+        message_html: Your Elasticsearch system index is outdated due to a setting change. Please run <code>tootctl search deploy --reset-chewy</code> to update it.
       elasticsearch_running_check:
         message_html: Could not connect to Elasticsearch. Please check that it is running, or disable full-text search
       elasticsearch_version_check:
@@ -861,6 +916,12 @@ en:
         message_html: You haven't defined any server rules.
       sidekiq_process_check:
         message_html: No Sidekiq process running for the %{value} queue(s). Please review your Sidekiq configuration
+      software_version_critical_check:
+        action: See available updates
+        message_html: A critical Mastodon update is available, please update as quickly as possible.
+      software_version_patch_check:
+        action: See available updates
+        message_html: A bugfix Mastodon update is available.
       upload_check_privacy_error:
         action: Check here for more information
         message_html: "<strong>Your web server is misconfigured. The privacy of your users is at risk.</strong>"
@@ -974,6 +1035,9 @@ en:
       body: "%{target} is appealing a moderation decision by %{action_taken_by} from %{date}, which was %{type}. They wrote:"
       next_steps: You can approve the appeal to undo the moderation decision, or ignore it.
       subject: "%{username} is appealing a moderation decision on %{instance}"
+    new_critical_software_updates:
+      body: New critical versions of Mastodon have been released, you may want to update as soon as possible!
+      subject: Critical Mastodon updates are available for %{instance}!
     new_pending_account:
       body: The details of the new account are below. You can approve or reject this application.
       subject: New account up for review on %{instance} (%{username})
@@ -981,6 +1045,9 @@ en:
       body: "%{reporter} has reported %{target}"
       body_remote: Someone from %{domain} has reported %{target}
       subject: New report for %{instance} (#%{id})
+    new_software_updates:
+      body: New Mastodon versions have been released, you may want to update!
+      subject: New Mastodon versions are available for %{instance}!
     new_trends:
       body: 'The following items need a review before they can be displayed publicly:'
       new_trending_links:
@@ -1000,12 +1067,22 @@ en:
     hint_html: If you want to move from another account to this one, here you can create an alias, which is required before you can proceed with moving followers from the old account to this one. This action by itself is <strong>harmless and reversible</strong>. <strong>The account migration is initiated from the old account</strong>.
     remove: Unlink alias
   antennas:
-    beta: This function is in beta.
     contexts:
       account: Accounts
       domain: Domains
       keyword: Keywords
       tag: Tags
+    errors:
+      duplicate_account: Duplicate account
+      duplicate_domain: Duplicate domain
+      duplicate_keyword: Duplicate keyword
+      duplicate_tag: Duplicate tag
+      limit:
+        accounts: 登録できるアカウント数の上限に達しています
+        domains: 登録できるドメイン数の上限に達しています
+        keywords: 登録できるキーワード数の上限に達しています
+        tags: 登録できるタグ数の上限に達しています
+      too_short_keyword: Too short keyword! must 2 and more letters
     edit:
       accounts_hint: \@askyq or @askyq@example.com
       accounts_raw: Account list
@@ -1019,6 +1096,7 @@ en:
       exclude_tags_raw: Excluding hashtag list
       hint: 下のリストに、絞り込み条件・除外条件を入力します。条件は複数指定することができます。1行につき1つずつ入力してください。空行、コメント、重複を含めることはできません。
       ignore_reblog: Ignore BTs
+      insert_feeds: Insert home/list timeline (Destination list setting is NOT available if this checkbox is NOT set)
       keywords_hint: キーワードは1つあたり最低2文字です。キーワードによる絞り込みを指定した場合、検索許可に対応しているサーバーからの投稿は、検索許可が「公開」以外のものは掲載されなくなります
       keywords_raw: Keyword list
       list: Destination list
@@ -1032,7 +1110,9 @@ en:
       empty_contexts: No contexts! You must set any context filters
       invalid_context: None or invalid context supplied
       invalid_list_owner: This list is not yours
-      remove_list_with_antenna: Cannot remove list because this list is related to antenna.
+      over_limit: You have exceeded the limit of %{limit} antennas
+      over_ltl_limit: You have exceeded the limit of %{limit} ltl antennas
+      over_stl_limit: You have exceeded the limit of %{limit} stl antennas
     index:
       contexts: Antennas in %{contexts}
       delete: Delete
@@ -1056,11 +1136,11 @@ en:
       guide_link: https://crowdin.com/project/mastodon
       guide_link_text: Everyone can contribute.
     sensitive_content: Sensitive content
-    toot_layout: Post layout
   application_mailer:
     notification_preferences: Change e-mail preferences
     salutation: "%{name},"
     settings: 'Change e-mail preferences: %{link}'
+    unsubscribe: Unsubscribe
     view: 'View:'
     view_profile: View profile
     view_status: View post
@@ -1075,9 +1155,9 @@ en:
   auth:
     apply_for_account: Request an account
     captcha_confirmation:
-      hint_html: Just one more step! To confirm your account, this server requires you to solve a CAPTCHA. You can <a href="/about/more">contact the server administrator</a> if you have questions or need assistance with confirming your account.
-      title: User verification
-    change_password: Password
+      help_html: If you have issues solving the CAPTCHA, you can get in touch with us through %{email} and we can assist you.
+      hint_html: Just one more thing! We need to confirm you're a human (this is so we can keep the spam out!). Solve the CAPTCHA below and click "Continue".
+      title: Security check
     cloudflare_with_registering: With cloudflare on auth
     confirmations:
       wrong_email_hint: If that e-mail address is not correct, you can change it in account settings.
@@ -1115,8 +1195,11 @@ en:
     rules:
       accept: Accept
       back: Back
+      invited_by: 'You can join %{domain} thanks to the invitation you have received from:'
       preamble: These are set and enforced by the %{domain} moderators.
+      preamble_invited: Before you proceed, please consider the ground rules set by the moderators of %{domain}.
       title: Some ground rules.
+      title_invited: You've been invited.
     security: Security
     set_new_password: Set new password
     setup:
@@ -1141,18 +1224,6 @@ en:
       view_strikes: View past strikes against your account
     too_fast: Form submitted too fast, try again.
     use_security_key: Use security key
-  authorize_follow:
-    already_following: You are already following this account
-    already_requested: You have already sent a follow request to that account
-    error: Unfortunately, there was an error looking up the remote account
-    follow: Follow
-    follow_request: 'You have sent a follow request to:'
-    following: 'Success! You are now following:'
-    post_follow:
-      close: Or, you can just close this window.
-      return: Show the user's profile
-      web: Go to web
-    title: Follow %{acct}
   challenge:
     confirm: Continue
     hint_html: "<strong>Tip:</strong> We won't ask you for your password again for the next hour."
@@ -1229,6 +1300,10 @@ en:
       your_appeal_rejected: Your appeal has been rejected
   domain_validator:
     invalid_domain: is not a valid domain name
+  edit_profile:
+    basic_information: Basic information
+    hint_html: "<strong>Customize what people see on your public profile and next to your posts.</strong> Other people are more likely to follow you back and interact with you when you have a filled out profile and a profile picture."
+    other: Other
   errors:
     '400': The request you submitted was invalid or malformed.
     '403': You don't have permission to view this page.
@@ -1266,7 +1341,7 @@ en:
     add_new: Add new
     errors:
       limit: You have already featured the maximum number of hashtags
-    hint_html: "<strong>What are featured hashtags?</strong> They are displayed prominently on your public profile and allow people to browse your public posts specifically under those hashtags. They are a great tool for keeping track of creative works or long-term projects."
+    hint_html: "<strong>Feature your most important hashtags on your profile.</strong> A great tool for keeping track of your creative works and long-term projects, featured hashtags are displayed prominently on your profile and allow quick access to your own posts."
   filters:
     contexts:
       account: Profiles
@@ -1353,12 +1428,14 @@ en:
       bookmarks_html: You are about to <strong>replace your bookmarks</strong> with up to <strong>%{total_items} posts</strong> from <strong>%{filename}</strong>.
       domain_blocking_html: You are about to <strong>replace your domain block list</strong> with up to <strong>%{total_items} domains</strong> from <strong>%{filename}</strong>.
       following_html: You are about to <strong>follow</strong> up to <strong>%{total_items} accounts</strong> from <strong>%{filename}</strong> and <strong>stop following anyone else</strong>.
+      lists_html: You are about to <strong>replace your lists</strong> with contents of <strong>%{filename}</strong>. Up to <strong>%{total_items} accounts</strong> will be added to new lists.
       muting_html: You are about to <strong>replace your list of muted accounts</strong> with up to <strong>%{total_items} accounts</strong> from <strong>%{filename}</strong>.
     preambles:
       blocking_html: You are about to <strong>block</strong> up to <strong>%{total_items} accounts</strong> from <strong>%{filename}</strong>.
       bookmarks_html: You are about to add up to <strong>%{total_items} posts</strong> from <strong>%{filename}</strong> to your <strong>bookmarks</strong>.
       domain_blocking_html: You are about to <strong>block</strong> up to <strong>%{total_items} domains</strong> from <strong>%{filename}</strong>.
       following_html: You are about to <strong>follow</strong> up to <strong>%{total_items} accounts</strong> from <strong>%{filename}</strong>.
+      lists_html: You are about to add up to <strong>%{total_items} accounts</strong> from <strong>%{filename}</strong> to your <strong>lists</strong>. New lists will be created if there is no list to add to.
       muting_html: You are about to <strong>mute</strong> up to <strong>%{total_items} accounts</strong> from <strong>%{filename}</strong>.
     preface: You can import data that you have exported from another server, such as a list of the people you are following or blocking.
     recent_imports: Recent imports
@@ -1375,6 +1452,7 @@ en:
       bookmarks: Importing bookmarks
       domain_blocking: Importing blocked domains
       following: Importing followed accounts
+      lists: Importing lists
       muting: Importing muted accounts
     type: Import type
     type_groups:
@@ -1385,6 +1463,7 @@ en:
       bookmarks: Bookmarks
       domain_blocking: Domain blocking list
       following: Following list
+      lists: Lists
       muting: Muting list
     upload: Upload
   invites:
@@ -1423,6 +1502,21 @@ en:
     failed_sign_in_html: Failed sign-in attempt with %{method} from %{ip} (%{browser})
     successful_sign_in_html: Successful sign-in with %{method} from %{ip} (%{browser})
     title: Authentication history
+  mail_subscriptions:
+    unsubscribe:
+      action: Yes, unsubscribe
+      complete: Unsubscribed
+      confirmation_html: Are you sure you want to unsubscribe from receiving %{type} for Mastodon on %{domain} to your e-mail at %{email}? You can always re-subscribe from your <a href="%{settings_path}">e-mail notification settings</a>.
+      emails:
+        notification_emails:
+          favourite: favorite notification e-mails
+          follow: follow notification e-mails
+          follow_request: follow request e-mails
+          mention: mention notification e-mails
+          reblog: boost notification e-mails
+      resubscribe_html: If you've unsubscribed by mistake, you can re-subscribe from your <a href="%{settings_path}">e-mail notification settings</a>.
+      success_html: You'll no longer receive %{type} for Mastodon on %{domain} to your e-mail at %{email}.
+      title: Unsubscribe
   media_attachments:
     validations:
       images_and_video: Cannot attach a video to a post that already contains images
@@ -1506,6 +1600,7 @@ en:
     update:
       subject: "%{name} edited a post"
   notifications:
+    administration_emails: Admin e-mail notifications
     email_events: Events for e-mail notifications
     email_events_hint: 'Select events that you want to receive notifications for:'
     other_settings: Other notifications settings
@@ -1547,14 +1642,37 @@ en:
       too_few_options: must have more than one item
       too_many_options: can't contain more than %{max} items
   preferences:
+    dtl: Deep timeline
+    dtl_hint: "You can join deep timeline with #%{tag} tag. Following settings make convenient to use deep timeline."
     other: Other
     posting_defaults: Posting defaults
     public_timelines: Public timelines
+    reaching: Visibility and search
+    search: Search
+    searchability: Searchability of your post
+    visibility: Visibility
+  privacy:
+    hint_html: "<strong>Customize how you want your profile and your posts to be found.</strong> A variety of features in Mastodon can help you reach a wider audience when enabled. Take a moment to review these settings to make sure they fit your use case."
+    privacy: Privacy
+    privacy_hint_html: Control how much you want to disclose for the benefit of others. People discover interesting profiles and cool apps by browsing other people's follows and seeing which apps they post from, but you may prefer to keep it hidden.
+    reach: Reach
+    reach_hint_html: Control whether you want to be discovered and followed by new people. Do you want your posts to appear on the Explore screen? Do you want other people to see you in their follow recommendations? Do you want to accept all new followers automatically, or have granular control over each one?
+    search: Search
+    search_hint_html: Control how you want to be found. Do you want people to find you by what you've publicly posted about? Do you want people outside Mastodon to find your profile when searching the web? Please mind that total exclusion from all search engines cannot be guaranteed for public information.
     stop_deliver: Stop delivering
+    title: Privacy and reach
+  privacy_extra:
+    hint_html: These settings are kmyblue original. You will receive additional privacy benefits by doing this setting.
+    post_processing_hint_html: 投稿された情報に対して、システムが追加で行うことができる操作を制御します。これらには、第三者のサイトへあなたの投稿に関する情報の送信を伴う設定も含まれます。
+    post_processing: 投稿の処理
+    stop_deliver: 配送停止
+    stop_deliver_hint_html: Mastodonの投稿を、他のソフトウェアでは自由に検索することができます。Mastodon内で行ったプライバシーの設定は無視され、あなたの投稿が意図しない人に見つかるおそれがあります。ここでは、他のサーバーやソフトウェアであなたの投稿が見つからないようにする設定が可能です。ただしリスクは伴います。
+    title: Privacy extra settings
   privacy_policy:
     title: Privacy Policy
   reactions:
     errors:
+      banned: Banned reaction from the user
       duplication: Cannot react same things
       limit_reached: Limit of different reactions reached
       unrecognized_emoji: is not a recognized emoji
@@ -1655,7 +1773,7 @@ en:
     migrate: Account migration
     notifications: Notifications
     preferences: Preferences
-    profile: Profile
+    profile: Public profile
     relationships: Follows and followers
     statuses_cleanup: Automated post deletion
     strikes: Moderation strikes
@@ -1674,6 +1792,7 @@ en:
         one: "%{count} video"
         other: "%{count} videos"
     boosted_from_html: Boosted from %{acct_link}
+    contains_ng_words: The post contains NG words
     content_warning: 'Content warning: %{warning}'
     default_language: Same as interface language
     disallowed_hashtags:
@@ -1698,20 +1817,24 @@ en:
         other: "%{count} votes"
       vote: Vote
     searchabilities:
-      direct: Self only
-      direct_long: Nobody can find, but you can
-      private: Reactionners
-      private_long: Reacter of this post can find
+      direct: Reactionners
+      direct_long: Reacter of this post can find
+      direct_search_long: You can search you reacted posts only
+      limited: Self only
+      limited_long: Nobody can find, but you can
+      limited_search_long: You can search your posts only
+      private: Followers and reactionners
+      private_long: Your followers and reactionners can find
+      private_search_long: You can search you are following or reacted posts only
       public: Public
       public_long: Anyone can find
-      unlisted: Followers only
-      unlisted_long: Your followers can find
+      public_search_long: You can search all posts permitted to search
     show_more: Show more
     show_newer: Show newer
     show_older: Show older
     show_thread: Show thread
-    sign_in_to_participate: Login to participate in the conversation
     title: '%{name}: "%{quote}"'
+    too_many_hashtags: Too many hashtags
     visibilities:
       direct: Direct
       private: Followers-only
@@ -1759,8 +1882,6 @@ en:
     min_reblogs: Keep posts boosted at least
     min_reblogs_hint: Doesn't delete any of your posts that has been boosted at least this number of times. Leave blank to delete posts regardless of their number of boosts
   stream_entries:
-    pinned: Pinned post
-    reblogged: boosted
     sensitive_content: Sensitive content
   strikes:
     errors:
@@ -1776,6 +1897,11 @@ en:
       default: "%b %d, %Y, %H:%M"
       month: "%b %Y"
       time: "%H:%M"
+      with_time_zone: "%b %d, %Y, %H:%M %Z"
+  translation:
+    errors:
+      quota_exceeded: The server-wide usage quota for the translation service has been exceeded.
+      too_many_requests: There have been too many requests to the translation service recently.
   two_factor_authentication:
     add: Add
     disable: Disable 2FA
@@ -1821,6 +1947,7 @@ en:
       explanation:
         delete_statuses: Some of your posts have been found to violate one or more community guidelines and have been subsequently removed by the moderators of %{instance}.
         disable: You can no longer use your account, but your profile and other data remains intact. You can request a backup of your data, change account settings or delete your account.
+        force_cw: Some of your posts have been added warning (CW) by the moderators of %{instance}. This means that people will need to tap the text in the posts before a preview is displayed. You can add posts warning yourself when posting in the future.
         mark_statuses_as_sensitive: Some of your posts have been marked as sensitive by the moderators of %{instance}. This means that people will need to tap the media in the posts before a preview is displayed. You can mark media as sensitive yourself when posting in the future.
         sensitive: From now on, all your uploaded media files will be marked as sensitive and hidden behind a click-through warning.
         silence: You can still use your account but only people who are already following you will see your posts on this server, and you may be excluded from various discovery features. However, others may still manually follow you.
@@ -1830,6 +1957,7 @@ en:
       subject:
         delete_statuses: Your posts on %{acct} have been removed
         disable: Your account %{acct} has been frozen
+        force_cw: Your posts on %{acct} have been added warning
         mark_statuses_as_sensitive: Your posts on %{acct} have been marked as sensitive
         none: Warning for %{acct}
         sensitive: Your posts on %{acct} will be marked as sensitive from now on
@@ -1838,6 +1966,7 @@ en:
       title:
         delete_statuses: Posts removed
         disable: Account frozen
+        force_cw: Posts added warning
         mark_statuses_as_sensitive: Posts marked as sensitive
         none: Warning
         sensitive: Account marked as sensitive
@@ -1861,8 +1990,12 @@ en:
     seamless_external_login: You are logged in via an external service, so password and e-mail settings are not available.
     signed_in_as: 'Signed in as:'
   verification:
-    explanation_html: 'You can <strong>verify yourself as the owner of the links in your profile metadata</strong>. For that, the linked website must contain a link back to your Mastodon profile. After adding the link you may need to come back here and re-save your profile for the verification to take effect. The link back <strong>must</strong> have a <code>rel="me"</code> attribute. The text content of the link does not matter. Here is an example:'
+    extra_instructions_html: <strong>Tip:</strong> The link on your website can be invisible. The important part is <code>rel="me"</code> which prevents impersonation on websites with user-generated content. You can even use a <code>link</code> tag in the header of the page instead of <code>a</code>, but the HTML must be accessible without executing JavaScript.
+    here_is_how: Here's how
+    hint_html: "<strong>Verifying your identity on Mastodon is for everyone.</strong> Based on open web standards, now and forever free. All you need is a personal website that people recognize you by. When you link to this website from your profile, we will check that the website links back to your profile and show a visual indicator on it."
+    instructions_html: Copy and paste the code below into the HTML of your website. Then add the address of your website into one of the extra fields on your profile from the "Edit profile" tab and save changes.
     verification: Verification
+    verified_links: Your verified links
   webauthn_credentials:
     add: Add new security key
     create:

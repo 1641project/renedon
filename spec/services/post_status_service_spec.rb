@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe PostStatusService, type: :service do
-  subject { PostStatusService.new }
+  subject { described_class.new }
 
   it 'creates a new status' do
     account = Fabricate(:account)
@@ -48,11 +48,11 @@ RSpec.describe PostStatusService, type: :service do
       expect(status.params['text']).to eq 'Hi future!'
       expect(status.params['media_ids']).to eq [media.id]
       expect(media.reload.status).to be_nil
-      expect(Status.where(text: 'Hi future!').exists?).to be_falsey
+      expect(Status.where(text: 'Hi future!')).to_not exist
     end
 
     it 'does not change statuses count' do
-      expect { subject.call(account, text: 'Hi future!', scheduled_at: future, thread: previous_status) }.to_not change { [account.statuses_count, previous_status.replies_count] }
+      expect { subject.call(account, text: 'Hi future!', scheduled_at: future, thread: previous_status) }.to_not(change { [account.statuses_count, previous_status.replies_count] })
     end
   end
 
@@ -113,6 +113,34 @@ RSpec.describe PostStatusService, type: :service do
     expect(status.visibility).to eq 'unlisted'
   end
 
+  it 'creates a status with the given searchability' do
+    status = create_status_with_options(searchability: :public, visibility: :public)
+
+    expect(status).to be_persisted
+    expect(status.searchability).to eq 'public'
+  end
+
+  it 'creates a status with limited searchability for silenced users' do
+    status = subject.call(Fabricate(:account, silenced: true), text: 'test', searchability: :public, visibility: :public)
+
+    expect(status).to be_persisted
+    expect(status.searchability).to eq 'private'
+  end
+
+  it 'creates a status with the given searchability=public / visibility=unlisted' do
+    status = create_status_with_options(searchability: :public, visibility: :unlisted)
+
+    expect(status).to be_persisted
+    expect(status.searchability).to eq 'public'
+  end
+
+  it 'creates a status with the given searchability=public / visibility=private' do
+    status = create_status_with_options(searchability: :public, visibility: :private)
+
+    expect(status).to be_persisted
+    expect(status.searchability).to eq 'private'
+  end
+
   it 'creates a status for the given application' do
     application = Fabricate(:application)
 
@@ -132,7 +160,7 @@ RSpec.describe PostStatusService, type: :service do
   end
 
   it 'processes mentions' do
-    mention_service = double(:process_mentions_service)
+    mention_service = instance_double(ProcessMentionsService)
     allow(mention_service).to receive(:call)
     allow(ProcessMentionsService).to receive(:new).and_return(mention_service)
     account = Fabricate(:account)
@@ -140,7 +168,42 @@ RSpec.describe PostStatusService, type: :service do
     status = subject.call(account, text: 'test status update')
 
     expect(ProcessMentionsService).to have_received(:new)
-    expect(mention_service).to have_received(:call).with(status, save_records: false)
+    expect(mention_service).to have_received(:call).with(status, limited_type: '', circle: nil, save_records: false)
+  end
+
+  it 'mutual visibility' do
+    account = Fabricate(:account)
+    mutual_account = Fabricate(:account)
+    other_account = Fabricate(:account)
+    text = 'This is an English text.'
+
+    mutual_account.follow!(account)
+    account.follow!(mutual_account)
+    other_account.follow!(account)
+    status = subject.call(account, text: text, visibility: 'mutual')
+
+    expect(status.visibility).to eq 'limited'
+    expect(status.limited_scope).to eq 'mutual'
+    expect(status.mentioned_accounts.count).to eq 1
+    expect(status.mentioned_accounts.first.id).to eq mutual_account.id
+  end
+
+  it 'circle visibility' do
+    account = Fabricate(:account)
+    circle_account = Fabricate(:account)
+    other_account = Fabricate(:account)
+    circle = Fabricate(:circle, account: account)
+    text = 'This is an English text.'
+
+    circle_account.follow!(account)
+    other_account.follow!(account)
+    circle.accounts << circle_account
+    status = subject.call(account, text: text, visibility: 'circle', circle_id: circle.id)
+
+    expect(status.visibility).to eq 'limited'
+    expect(status.limited_scope).to eq 'circle'
+    expect(status.mentioned_accounts.count).to eq 1
+    expect(status.mentioned_accounts.first.id).to eq circle_account.id
   end
 
   it 'safeguards mentions' do
@@ -163,7 +226,7 @@ RSpec.describe PostStatusService, type: :service do
   end
 
   it 'processes hashtags' do
-    hashtags_service = double(:process_hashtags_service)
+    hashtags_service = instance_double(ProcessHashtagsService)
     allow(hashtags_service).to receive(:call)
     allow(ProcessHashtagsService).to receive(:new).and_return(hashtags_service)
     account = Fabricate(:account)

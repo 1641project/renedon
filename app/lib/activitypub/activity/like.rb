@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class ActivityPub::Activity::Like < ActivityPub::Activity
+  include Redisable
+  include Lockable
+
   def perform
     @original_status = status_from_uri(object_uri)
 
@@ -44,9 +47,15 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
       Trends.statuses.register(@original_status)
     end
 
-    return if EmojiReaction.where(account: @account, status: @original_status).count >= EmojiReaction::EMOJI_REACTION_PER_ACCOUNT_LIMIT
+    reaction = nil
 
-    reaction = @original_status.emoji_reactions.create!(account: @account, name: shortcode, custom_emoji: emoji, uri: @json['id'])
+    with_redis_lock("emoji_reaction:#{@original_status.id}") do
+      return if EmojiReaction.where(account: @account, status: @original_status).count >= EmojiReaction::EMOJI_REACTION_PER_ACCOUNT_LIMIT
+      return if EmojiReaction.find_by(account: @account, status: @original_status, name: shortcode)
+
+      reaction = @original_status.emoji_reactions.create!(account: @account, name: shortcode, custom_emoji: emoji, uri: @json['id'])
+    end
+
     write_stream(reaction)
 
     if @original_status.account.local?
@@ -100,7 +109,7 @@ class ActivityPub::Activity::Like < ActivityPub::Activity
     emoji_group = @original_status.emoji_reactions_grouped_by_name
                                   .find { |reaction_group| reaction_group['name'] == emoji_reaction.name && (!reaction_group.key?(:domain) || reaction_group['domain'] == emoji_reaction.custom_emoji&.domain) }
     emoji_group['status_id'] = @original_status.id.to_s
-    DeliveryEmojiReactionWorker.perform_async(render_emoji_reaction(emoji_group), @original_status.id, emoji_reaction.account_id)
+    DeliveryEmojiReactionWorker.perform_async(render_emoji_reaction(emoji_group), emoji_reaction.id, emoji_reaction.account_id)
   end
 
   def render_emoji_reaction(emoji_group)

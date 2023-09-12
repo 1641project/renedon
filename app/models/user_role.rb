@@ -36,6 +36,8 @@ class UserRole < ApplicationRecord
     manage_roles: (1 << 17),
     manage_user_access: (1 << 18),
     delete_user_data: (1 << 19),
+    manage_sensitive_words: (1 << 29),
+    manage_ng_words: (1 << 30),
   }.freeze
 
   module Flags
@@ -61,6 +63,8 @@ class UserRole < ApplicationRecord
         manage_blocks
         manage_taxonomies
         manage_invites
+        manage_ng_words
+        manage_sensitive_words
       ).freeze,
 
       administration: %w(
@@ -125,7 +129,7 @@ class UserRole < ApplicationRecord
   end
 
   def permissions_as_keys=(value)
-    self.permissions = value.map(&:presence).compact.reduce(Flags::NONE) { |bitmask, privilege| FLAGS.key?(privilege.to_sym) ? (bitmask | FLAGS[privilege.to_sym]) : bitmask }
+    self.permissions = value.filter_map(&:presence).reduce(Flags::NONE) { |bitmask, privilege| FLAGS.key?(privilege.to_sym) ? (bitmask | FLAGS[privilege.to_sym]) : bitmask }
   end
 
   def can?(*any_of_privileges)

@@ -1,25 +1,39 @@
-import Immutable from 'immutable';
-import React from 'react';
-import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
+
+import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
+
 import classNames from 'classnames';
+import { Helmet } from 'react-helmet';
+
+import Immutable from 'immutable';
 import ImmutablePropTypes from 'react-immutable-proptypes';
+import ImmutablePureComponent from 'react-immutable-pure-component';
+import { connect } from 'react-redux';
 import { createSelector } from 'reselect';
+
+import { HotKeys } from 'react-hotkeys';
+
+import { Icon }  from 'mastodon/components/icon';
+import { LoadingIndicator } from 'mastodon/components/loading_indicator';
+import ScrollContainer from 'mastodon/containers/scroll_container';
+import BundleColumnError from 'mastodon/features/ui/components/bundle_column_error';
+
 import {
-  fetchStatus,
-  muteStatus,
-  unmuteStatus,
-  deleteStatus,
-  editStatus,
-  hideStatus,
-  revealStatus,
-  translateStatus,
-  undoStatusTranslation,
-} from '../../actions/statuses';
-import LoadingIndicator from 'mastodon/components/loading_indicator';
-import DetailedStatus from './components/detailed_status';
-import ActionBar from './components/action_bar';
-import Column from '../ui/components/column';
+  unblockAccount,
+  unmuteAccount,
+} from '../../actions/accounts';
+import { initBlockModal } from '../../actions/blocks';
+import { initBoostModal } from '../../actions/boosts';
+import {
+  replyCompose,
+  mentionCompose,
+  directCompose,
+  insertReferenceCompose,
+} from '../../actions/compose';
+import {
+  blockDomain,
+  unblockDomain,
+} from '../../actions/domain_blocks';
 import {
   favourite,
   unfavourite,
@@ -32,55 +46,54 @@ import {
   pin,
   unpin,
 } from '../../actions/interactions';
-import {
-  replyCompose,
-  mentionCompose,
-  directCompose,
-} from '../../actions/compose';
-import {
-  unblockAccount,
-  unmuteAccount,
-} from '../../actions/accounts';
-import {
-  blockDomain,
-  unblockDomain,
-} from '../../actions/domain_blocks';
-import { initMuteModal } from '../../actions/mutes';
-import { initBlockModal } from '../../actions/blocks';
-import { initBoostModal } from '../../actions/boosts';
-import { initReport } from '../../actions/reports';
-import { makeGetStatus, makeGetPictureInPicture } from '../../selectors';
-import ScrollContainer from 'mastodon/containers/scroll_container';
-import ColumnHeader from '../../components/column_header';
-import StatusContainer from '../../containers/status_container';
 import { openModal } from '../../actions/modal';
-import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
-import ImmutablePureComponent from 'react-immutable-pure-component';
-import { HotKeys } from 'react-hotkeys';
-import { boostModal, deleteModal } from '../../initial_state';
-import { attachFullscreenListener, detachFullscreenListener, isFullscreen } from '../ui/util/fullscreen';
+import { initMuteModal } from '../../actions/mutes';
+import { initReport } from '../../actions/reports';
+import {
+  fetchStatus,
+  muteStatus,
+  unmuteStatus,
+  deleteStatus,
+  editStatus,
+  hideStatus,
+  revealStatus,
+  translateStatus,
+  undoStatusTranslation,
+} from '../../actions/statuses';
+import ColumnHeader from '../../components/column_header';
 import { textForScreenReader, defaultMediaVisibility } from '../../components/status';
-import { Icon }  from 'mastodon/components/icon';
-import { Helmet } from 'react-helmet';
-import BundleColumnError from 'mastodon/features/ui/components/bundle_column_error';
+import StatusContainer from '../../containers/status_container';
+import { bookmarkCategoryNeeded, boostModal, deleteModal } from '../../initial_state';
+import { makeGetStatus, makeGetPictureInPicture } from '../../selectors';
+import Column from '../ui/components/column';
+import { attachFullscreenListener, detachFullscreenListener, isFullscreen } from '../ui/util/fullscreen';
+
+import ActionBar from './components/action_bar';
+import DetailedStatus from './components/detailed_status';
 
 const messages = defineMessages({
   deleteConfirm: { id: 'confirmations.delete.confirm', defaultMessage: 'Delete' },
   deleteMessage: { id: 'confirmations.delete.message', defaultMessage: 'Are you sure you want to delete this status?' },
   redraftConfirm: { id: 'confirmations.redraft.confirm', defaultMessage: 'Delete & redraft' },
-  redraftMessage: { id: 'confirmations.redraft.message', defaultMessage: 'Are you sure you want to delete this status and re-draft it? Favourites and boosts will be lost, and replies to the original post will be orphaned.' },
+  redraftMessage: { id: 'confirmations.redraft.message', defaultMessage: 'Are you sure you want to delete this status and re-draft it? Favorites and boosts will be lost, and replies to the original post will be orphaned.' },
   revealAll: { id: 'status.show_more_all', defaultMessage: 'Show more for all' },
   hideAll: { id: 'status.show_less_all', defaultMessage: 'Show less for all' },
   statusTitleWithAttachments: { id: 'status.title.with_attachments', defaultMessage: '{user} posted {attachmentCount, plural, one {an attachment} other {# attachments}}' },
   detailedStatus: { id: 'status.detailed_status', defaultMessage: 'Detailed conversation view' },
   replyConfirm: { id: 'confirmations.reply.confirm', defaultMessage: 'Reply' },
   replyMessage: { id: 'confirmations.reply.message', defaultMessage: 'Replying now will overwrite the message you are currently composing. Are you sure you want to proceed?' },
-  blockDomainConfirm: { id: 'confirmations.domain_block.confirm', defaultMessage: 'Hide entire domain' },
+  blockDomainConfirm: { id: 'confirmations.domain_block.confirm', defaultMessage: 'Block entire domain' },
 });
 
 const makeMapStateToProps = () => {
   const getStatus = makeGetStatus();
   const getPictureInPicture = makeGetPictureInPicture();
+
+  const getReferenceIds = createSelector([
+    (state, { id }) => state.getIn(['contexts', 'references', id]),
+  ], (references) => {
+    return references;
+  });
 
   const getAncestorsIds = createSelector([
     (_, { id }) => id,
@@ -141,10 +154,12 @@ const makeMapStateToProps = () => {
 
     let ancestorsIds   = Immutable.List();
     let descendantsIds = Immutable.List();
+    let referenceIds   = Immutable.List();
 
     if (status) {
       ancestorsIds   = getAncestorsIds(state, { id: status.get('in_reply_to_id') });
       descendantsIds = getDescendantsIds(state, { id: status.get('id') });
+      referenceIds   = getReferenceIds(state, { id: status.get('id') });
     }
 
     return {
@@ -152,6 +167,7 @@ const makeMapStateToProps = () => {
       status,
       ancestorsIds,
       descendantsIds,
+      referenceIds,
       askReplyConfirmation: state.getIn(['compose', 'text']).trim().length !== 0,
       domain: state.getIn(['meta', 'domain']),
       pictureInPicture: getPictureInPicture(state, { id: props.params.statusId }),
@@ -162,8 +178,9 @@ const makeMapStateToProps = () => {
 };
 
 const truncate = (str, num) => {
-  if (str.length > num) {
-    return str.slice(0, num) + '…';
+  const arr = Array.from(str);
+  if (arr.length > num) {
+    return arr.slice(0, num).join('') + '…';
   } else {
     return str;
   }
@@ -191,8 +208,9 @@ class Status extends ImmutablePureComponent {
     dispatch: PropTypes.func.isRequired,
     status: ImmutablePropTypes.map,
     isLoading: PropTypes.bool,
-    ancestorsIds: ImmutablePropTypes.list,
-    descendantsIds: ImmutablePropTypes.list,
+    ancestorsIds: ImmutablePropTypes.list.isRequired,
+    descendantsIds: ImmutablePropTypes.list.isRequired,
+    referenceIds: ImmutablePropTypes.list.isRequired,
     intl: PropTypes.object.isRequired,
     askReplyConfirmation: PropTypes.bool,
     multiColumn: PropTypes.bool,
@@ -219,12 +237,7 @@ class Status extends ImmutablePureComponent {
 
   UNSAFE_componentWillReceiveProps (nextProps) {
     if (nextProps.params.statusId !== this.props.params.statusId && nextProps.params.statusId) {
-      this._scrolledIntoView = false;
       this.props.dispatch(fetchStatus(nextProps.params.statusId));
-    }
-
-    if (nextProps.params.statusId && nextProps.ancestorsIds.size > this.props.ancestorsIds.size) {
-      this._scrolledIntoView = false;
     }
 
     if (nextProps.status && nextProps.status.get('id') !== this.state.loadedStatusId) {
@@ -247,10 +260,13 @@ class Status extends ImmutablePureComponent {
         dispatch(favourite(status));
       }
     } else {
-      dispatch(openModal('INTERACTION', {
-        type: 'favourite',
-        accountId: status.getIn(['account', 'id']),
-        url: status.get('url'),
+      dispatch(openModal({
+        modalType: 'INTERACTION',
+        modalProps: {
+          type: 'favourite',
+          accountId: status.getIn(['account', 'id']),
+          url: status.get('uri'),
+        },
       }));
     }
   };
@@ -289,19 +305,25 @@ class Status extends ImmutablePureComponent {
 
     if (signedIn) {
       if (askReplyConfirmation) {
-        dispatch(openModal('CONFIRM', {
-          message: intl.formatMessage(messages.replyMessage),
-          confirm: intl.formatMessage(messages.replyConfirm),
-          onConfirm: () => dispatch(replyCompose(status, this.context.router.history)),
+        dispatch(openModal({
+          modalType: 'CONFIRM',
+          modalProps: {
+            message: intl.formatMessage(messages.replyMessage),
+            confirm: intl.formatMessage(messages.replyConfirm),
+            onConfirm: () => dispatch(replyCompose(status, this.context.router.history)),
+          },
         }));
       } else {
         dispatch(replyCompose(status, this.context.router.history));
       }
     } else {
-      dispatch(openModal('INTERACTION', {
-        type: 'reply',
-        accountId: status.getIn(['account', 'id']),
-        url: status.get('url'),
+      dispatch(openModal({
+        modalType: 'INTERACTION',
+        modalProps: {
+          type: 'reply',
+          accountId: status.getIn(['account', 'id']),
+          url: status.get('uri'),
+        },
       }));
     }
   };
@@ -325,10 +347,13 @@ class Status extends ImmutablePureComponent {
         }
       }
     } else {
-      dispatch(openModal('INTERACTION', {
-        type: 'reblog',
-        accountId: status.getIn(['account', 'id']),
-        url: status.get('url'),
+      dispatch(openModal({
+        modalType: 'INTERACTION',
+        modalProps: {
+          type: 'reblog',
+          accountId: status.getIn(['account', 'id']),
+          url: status.get('uri'),
+        },
       }));
     }
   };
@@ -337,12 +362,30 @@ class Status extends ImmutablePureComponent {
     this.handleReblogClick(status, e, true);
   };
 
+  handleReference = (status) => {
+    this.props.dispatch(insertReferenceCompose(0, status.get('url')));
+  };
+
   handleBookmarkClick = (status) => {
+    if (bookmarkCategoryNeeded) {
+      this.handleBookmarkCategoryAdderClick(status);
+      return;
+    }
+    
     if (status.get('bookmarked')) {
       this.props.dispatch(unbookmark(status));
     } else {
       this.props.dispatch(bookmark(status));
     }
+  };
+
+  handleBookmarkCategoryAdderClick = (status) => {
+    this.props.dispatch(openModal({
+      modalType: 'BOOKMARK_CATEGORY_ADDER',
+      modalProps: {
+        statusId: status.get('id'),
+      },
+    }));
   };
 
   handleDeleteClick = (status, history, withRedraft = false) => {
@@ -351,10 +394,13 @@ class Status extends ImmutablePureComponent {
     if (!deleteModal) {
       dispatch(deleteStatus(status.get('id'), history, withRedraft));
     } else {
-      dispatch(openModal('CONFIRM', {
-        message: intl.formatMessage(withRedraft ? messages.redraftMessage : messages.deleteMessage),
-        confirm: intl.formatMessage(withRedraft ? messages.redraftConfirm : messages.deleteConfirm),
-        onConfirm: () => dispatch(deleteStatus(status.get('id'), history, withRedraft)),
+      dispatch(openModal({
+        modalType: 'CONFIRM',
+        modalProps: {
+          message: intl.formatMessage(withRedraft ? messages.redraftMessage : messages.deleteMessage),
+          confirm: intl.formatMessage(withRedraft ? messages.redraftConfirm : messages.deleteConfirm),
+          onConfirm: () => dispatch(deleteStatus(status.get('id'), history, withRedraft)),
+        },
       }));
     }
   };
@@ -372,11 +418,17 @@ class Status extends ImmutablePureComponent {
   };
 
   handleOpenMedia = (media, index, lang) => {
-    this.props.dispatch(openModal('MEDIA', { statusId: this.props.status.get('id'), media, index, lang }));
+    this.props.dispatch(openModal({
+      modalType: 'MEDIA',
+      modalProps: { statusId: this.props.status.get('id'), media, index, lang },
+    }));
   };
 
   handleOpenVideo = (media, lang, options) => {
-    this.props.dispatch(openModal('VIDEO', { statusId: this.props.status.get('id'), media, lang, options }));
+    this.props.dispatch(openModal({
+      modalType: 'VIDEO',
+      modalProps: { statusId: this.props.status.get('id'), media, lang, options },
+    }));
   };
 
   handleHotkeyOpenMedia = e => {
@@ -414,8 +466,8 @@ class Status extends ImmutablePureComponent {
   };
 
   handleToggleAll = () => {
-    const { status, ancestorsIds, descendantsIds } = this.props;
-    const statusIds = [status.get('id')].concat(ancestorsIds.toJS(), descendantsIds.toJS());
+    const { status, ancestorsIds, descendantsIds, referenceIds } = this.props;
+    const statusIds = [status.get('id')].concat(ancestorsIds.toJS(), descendantsIds.toJS(), referenceIds.toJS());
 
     if (status.get('hidden')) {
       this.props.dispatch(revealStatus(statusIds));
@@ -428,7 +480,7 @@ class Status extends ImmutablePureComponent {
     const { dispatch } = this.props;
 
     if (status.get('translation')) {
-      dispatch(undoStatusTranslation(status.get('id')));
+      dispatch(undoStatusTranslation(status.get('id'), status.get('poll')));
     } else {
       dispatch(translateStatus(status.get('id')));
     }
@@ -445,7 +497,10 @@ class Status extends ImmutablePureComponent {
   };
 
   handleEmbed = (status) => {
-    this.props.dispatch(openModal('EMBED', { url: status.get('url') }));
+    this.props.dispatch(openModal({
+      modalType: 'EMBED',
+      modalProps: { id: status.get('id') },
+    }));
   };
 
   handleUnmuteClick = account => {
@@ -457,10 +512,13 @@ class Status extends ImmutablePureComponent {
   };
 
   handleBlockDomainClick = domain => {
-    this.props.dispatch(openModal('CONFIRM', {
-      message: <FormattedMessage id='confirmations.domain_block.message' defaultMessage='Are you really, really sure you want to block the entire {domain}? In most cases a few targeted blocks or mutes are sufficient and preferable. You will not see content from that domain in any public timelines or your notifications. Your followers from that domain will be removed.' values={{ domain: <strong>{domain}</strong> }} />,
-      confirm: this.props.intl.formatMessage(messages.blockDomainConfirm),
-      onConfirm: () => this.props.dispatch(blockDomain(domain)),
+    this.props.dispatch(openModal({
+      modalType: 'CONFIRM',
+      modalProps: {
+        message: <FormattedMessage id='confirmations.domain_block.message' defaultMessage='Are you really, really sure you want to block the entire {domain}? In most cases a few targeted blocks or mutes are sufficient and preferable. You will not see content from that domain in any public timelines or your notifications. Your followers from that domain will be removed.' values={{ domain: <strong>{domain}</strong> }} />,
+        confirm: this.props.intl.formatMessage(messages.blockDomainConfirm),
+        onConfirm: () => this.props.dispatch(blockDomain(domain)),
+      },
     }));
   };
 
@@ -565,7 +623,7 @@ class Status extends ImmutablePureComponent {
         onMoveUp={this.handleMoveUp}
         onMoveDown={this.handleMoveDown}
         contextType='thread'
-        previousId={i > 0 && list.get(i - 1)}
+        previousId={i > 0 ? list.get(i - 1) : undefined}
         nextId={list.get(i + 1) || (ancestors && statusId)}
         rootId={statusId}
       />
@@ -576,20 +634,23 @@ class Status extends ImmutablePureComponent {
     this.node = c;
   };
 
-  componentDidUpdate () {
-    if (this._scrolledIntoView) {
-      return;
-    }
+  componentDidUpdate (prevProps) {
+    const { status, ancestorsIds, multiColumn } = this.props;
 
-    const { status, ancestorsIds } = this.props;
-
-    if (status && ancestorsIds && ancestorsIds.size > 0) {
-      const element = this.node.querySelectorAll('.focusable')[ancestorsIds.size - 1];
-
+    if (status && (ancestorsIds.size > prevProps.ancestorsIds.size || prevProps.status?.get('id') !== status.get('id'))) {
       window.requestAnimationFrame(() => {
-        element.scrollIntoView(true);
+        this.node?.querySelector('.detailed-status__wrapper')?.scrollIntoView(true);
+
+        // In the single-column interface, `scrollIntoView` will put the post behind the header,
+        // so compensate for that.
+        if (!multiColumn) {
+          const offset = document.querySelector('.column-header__wrapper')?.getBoundingClientRect()?.bottom;
+          if (offset) {
+            const scrollingElement = document.scrollingElement || document.body;
+            scrollingElement.scrollBy(0, -offset);
+          }
+        }
       });
-      this._scrolledIntoView = true;
     }
   }
 
@@ -602,8 +663,8 @@ class Status extends ImmutablePureComponent {
   };
 
   render () {
-    let ancestors, descendants;
-    const { isLoading, status, ancestorsIds, descendantsIds, intl, domain, multiColumn, pictureInPicture } = this.props;
+    let ancestors, descendants, references;
+    const { isLoading, status, ancestorsIds, descendantsIds, referenceIds, intl, domain, multiColumn, pictureInPicture } = this.props;
     const { fullscreen } = this.state;
 
     if (isLoading) {
@@ -618,6 +679,10 @@ class Status extends ImmutablePureComponent {
       return (
         <BundleColumnError multiColumn={multiColumn} errorType='routing' />
       );
+    }
+
+    if (referenceIds && referenceIds.size > 0) {
+      references = <>{this.renderChildren(referenceIds, true)}</>;
     }
 
     if (ancestorsIds && ancestorsIds.size > 0) {
@@ -656,6 +721,7 @@ class Status extends ImmutablePureComponent {
 
         <ScrollContainer scrollKey='thread'>
           <div className={classNames('scrollable', { fullscreen })} ref={this.setRef}>
+            {references}
             {ancestors}
 
             <HotKeys handlers={handlers}>
@@ -683,7 +749,9 @@ class Status extends ImmutablePureComponent {
                   onEmojiReact={this.handleEmojiReact}
                   onReblog={this.handleReblogClick}
                   onReblogForceModal={this.handleReblogForceModalClick}
+                  onReference={this.handleReference}
                   onBookmark={this.handleBookmarkClick}
+                  onBookmarkCategoryAdder={this.handleBookmarkCategoryAdderClick}
                   onDelete={this.handleDeleteClick}
                   onEdit={this.handleEditClick}
                   onDirect={this.handleDirectClick}
@@ -709,6 +777,7 @@ class Status extends ImmutablePureComponent {
         <Helmet>
           <title>{titleFromStatus(intl, status)}</title>
           <meta name='robots' content={(isLocal && isIndexable) ? 'all' : 'noindex'} />
+          <link rel='canonical' href={status.get('url')} />
         </Helmet>
       </Column>
     );

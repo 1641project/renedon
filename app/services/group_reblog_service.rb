@@ -9,7 +9,7 @@ class GroupReblogService < BaseService
     return nil if status.account.group?
 
     visibility = status.visibility.to_sym
-    return nil unless %i(public public_unlisted unlisted private direct).include?(visibility)
+    return nil unless %i(public public_unlisted unlisted login private direct).include?(visibility)
 
     accounts = status.mentions.map(&:account) | status.active_mentions.map(&:account)
     transcription = %i(private direct).include?(visibility)
@@ -49,7 +49,7 @@ class GroupReblogService < BaseService
         end
       end
 
-      text = status.account.local? ? status.text : strip_tags(status.text.gsub(/<br>/, "\n").gsub(%r{<br />}, "\n").gsub(%r{</p>}, "\n\n").strip)
+      text = status.account.local? ? status.text : strip_tags(status.text.gsub('<br>', "\n").gsub(%r{<br />}, "\n").gsub(%r{</p>}, "\n\n").strip)
 
       PostStatusService.new.call(
         account,

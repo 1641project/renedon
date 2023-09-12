@@ -1,18 +1,23 @@
 import PropTypes from 'prop-types';
-import React from 'react';
-import ImmutablePureComponent from 'react-immutable-pure-component';
-import ImmutablePropTypes from 'react-immutable-proptypes';
+
 import { defineMessages, injectIntl, FormattedMessage } from 'react-intl';
+
+import { Helmet } from 'react-helmet';
+
+import ImmutablePropTypes from 'react-immutable-proptypes';
+import ImmutablePureComponent from 'react-immutable-pure-component';
 import { connect } from 'react-redux';
+
+import { fetchEmojiReactions } from 'mastodon/actions/interactions';
 import ColumnHeader from 'mastodon/components/column_header';
 import { Icon } from 'mastodon/components/icon';
-import { fetchEmojiReactions } from 'mastodon/actions/interactions';
-import LoadingIndicator from 'mastodon/components/loading_indicator';
 import ScrollableList from 'mastodon/components/scrollable_list';
 import AccountContainer from 'mastodon/containers/account_container';
 import Column from 'mastodon/features/ui/components/column';
-import { Helmet } from 'react-helmet';
+
+
 import EmojiView from '../../components/emoji_view';
+import { LoadingIndicator } from '../../components/loading_indicator';
 
 const messages = defineMessages({
   refresh: { id: 'refresh', defaultMessage: 'Refresh' },
@@ -87,7 +92,7 @@ class EmojiReactions extends ImmutablePureComponent {
           bindToDocument={!multiColumn}
         >
           {Object.keys(groups).map((key) =>(
-            <AccountContainer key={key} id={key} withNote={false}>
+            <AccountContainer key={key} id={key} withNote={false} hideButtons>
               <div style={{ 'maxWidth': '100px' }}>
                 {groups[key].map((value, index2) => <EmojiView key={index2} name={value.name} url={value.url} staticUrl={value.static_url} />)}
               </div>

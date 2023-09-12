@@ -4,6 +4,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   include FormattingHelper
 
   def perform
+    @account.schedule_refresh_if_stale!
+
     dereference_object!
 
     case @object['type']
@@ -46,8 +48,6 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
   def create_status
     return reject_payload! if unsupported_object_type? || non_matching_uri_hosts?(@account.uri, object_uri) || tombstone_exists? || !related_to_local_activity?
-    return reject_payload! if (reply_to_local? || reply_to_local_account?) && reject_reply_to_local?
-    return reject_payload! if (!reply_to_local_account_following? || !reply_to_local_status_following?) && reject_reply_exclude_followers?
 
     with_redis_lock("create:#{object_uri}") do
       return if delete_arrived_first?(object_uri) || poll_vote?
@@ -61,7 +61,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       end
     end
 
-    @status
+    @status || reject_payload!
   end
 
   def audience_to
@@ -88,6 +88,10 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     process_tags
     process_audience
 
+    return nil unless valid_status?
+    return nil if (reply_to_local? || reply_to_local_account? || reply_to_local_from_tags?) && reject_reply_to_local?
+    return nil if (!reply_to_local_account_following? || !reply_to_local_status_following? || !reply_to_local_from_tags_following?) && reject_reply_exclude_followers?
+
     ApplicationRecord.transaction do
       @status = Status.create!(@params)
       attach_tags(@status)
@@ -97,6 +101,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     fetch_replies(@status)
     distribute
     forward_for_reply
+    process_references!
     join_group!
   end
 
@@ -115,7 +120,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   end
 
   def process_status_params
-    @status_parser = ActivityPub::Parser::StatusParser.new(@json, followers_collection: @account.followers_url)
+    @status_parser = ActivityPub::Parser::StatusParser.new(@json, followers_collection: @account.followers_url, object: @object)
 
     @params = {
       uri: @status_parser.uri,
@@ -130,6 +135,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       reply: @status_parser.reply,
       sensitive: @account.sensitized? || @status_parser.sensitive || false,
       visibility: @status_parser.visibility,
+      limited_scope: @status_parser.limited_scope,
       searchability: searchability,
       thread: replied_to_status,
       conversation: conversation_from_uri(@object['conversation']),
@@ -138,12 +144,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     }
   end
 
-  def reply_to_local_account?
-    accounts_in_audience.any?(&:local?)
-  end
-
-  def reply_to_local_account_following?
-    !reply_to_local_account? || accounts_in_audience.none? { |account| account.local? && !account.following?(@account) }
+  def valid_status?
+    !Admin::NgWord.reject?("#{@params[:spoiler_text]}\n#{@params[:text]}") && !Admin::NgWord.hashtag_reject?(@tags.size)
   end
 
   def accounts_in_audience
@@ -263,7 +265,13 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     return unless emoji.nil? || custom_emoji_parser.image_remote_url != emoji.image_remote_url || (custom_emoji_parser.updated_at && custom_emoji_parser.updated_at >= emoji.updated_at)
 
     begin
-      emoji ||= CustomEmoji.new(domain: @account.domain, shortcode: custom_emoji_parser.shortcode, uri: custom_emoji_parser.uri)
+      emoji ||= CustomEmoji.new(
+        domain: @account.domain,
+        shortcode: custom_emoji_parser.shortcode,
+        uri: custom_emoji_parser.uri,
+        is_sensitive: custom_emoji_parser.is_sensitive,
+        license: custom_emoji_parser.license
+      )
       emoji.image_remote_url = custom_emoji_parser.image_remote_url
       emoji.save
     rescue Seahorse::Client::NetworkingError => e
@@ -404,6 +412,22 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     @skip_download ||= DomainBlock.reject_media?(@account.domain)
   end
 
+  def reply_to_local_account?
+    accounts_in_audience.any?(&:local?)
+  end
+
+  def reply_to_local_account_following?
+    !reply_to_local_account? || accounts_in_audience.none? { |account| account.local? && !account.following?(@account) }
+  end
+
+  def reply_to_local_from_tags?
+    (@mentions.present? && @mentions.any? { |m| m.account.local? })
+  end
+
+  def reply_to_local_from_tags_following?
+    (@mentions.present? && @mentions.none? { |m| m.account.local? && !m.account.following?(@account) })
+  end
+
   def reply_to_local?
     !replied_to_status.nil? && replied_to_status.account.local?
   end
@@ -465,6 +489,13 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     retry
   end
 
+  def process_references!
+    references = @object['references'].nil? ? [] : ActivityPub::FetchReferencesService.new.call(@status, @object['references'])
+    quote = @object['quote'] || @object['quoteUrl'] || @object['quoteURL'] || @object['_misskey_quote']
+    references << quote if quote
+    ProcessReferencesWorker.perform_async(@status.id, [], references)
+  end
+
   def join_group!
     GroupReblogService.new.call(@status)
   end
@@ -474,6 +505,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       nil
     elsif audience_searchable_by.any? { |uri| ActivityPub::TagManager.instance.public_collection?(uri) }
       :public
+    elsif audience_searchable_by.include?('as:Limited')
+      :limited
     elsif audience_searchable_by.include?(@account.followers_url)
       :private
     else
@@ -482,35 +515,55 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   end
 
   SCAN_SEARCHABILITY_RE = /\[searchability:(public|followers|reactors|private)\]/
+  SCAN_SEARCHABILITY_FEDIBIRD_RE = /searchable_by_(all_users|followers_only|reacted_users_only|nobody)/
 
   def searchability
-    searchability = searchability_from_audience
+    from_audience = searchability_from_audience
+    return from_audience if from_audience
+    return nil if default_searchability_from_bio?
 
-    if searchability.nil?
-      note = @account&.note
-      return nil if note.blank?
+    searchability_from_bio || (misskey_software? ? misskey_searchability : nil)
+  end
 
-      searchability_bio = note.scan(SCAN_SEARCHABILITY_RE).first
-      return nil unless searchability_bio
+  def default_searchability_from_bio?
+    note = @account.note
+    return false if note.blank?
 
-      searchability = searchability_bio[0]
-      return nil if searchability.nil?
+    note.include?('searchable_by_default_range')
+  end
 
-      searchability = :public   if searchability == 'public'
-      searchability = :unlisted if searchability == 'followers'
-      searchability = :direct   if searchability == 'private'
-      searchability = :private  if searchability == 'reactors'
-    end
+  def searchability_from_bio
+    note = @account.note
+    return nil if note.blank?
 
-    visibility = visibility_from_audience_with_silence
+    searchability_bio = note.scan(SCAN_SEARCHABILITY_FEDIBIRD_RE).first || note.scan(SCAN_SEARCHABILITY_RE).first
+    return nil unless searchability_bio
 
-    if searchability == visibility
-      searchability
-    elsif [:public, :unlisted].include?(searchability) && [:public, :unlisted].include?(visibility) # unlisted is Followers only in kmyblue (generics: private)
-      :private
-    else
-      :direct
-    end
+    searchability = searchability_bio[0]
+    return nil if searchability.nil?
+
+    searchability = :public  if %w(public all_users).include?(searchability)
+    searchability = :private if %w(followers followers_only).include?(searchability)
+    searchability = :direct  if %w(reactors reacted_users_only).include?(searchability)
+    searchability = :limited if %w(private nobody).include?(searchability)
+
+    searchability
+  end
+
+  def instance_info
+    @instance_info ||= InstanceInfo.find_by(domain: @account.domain)
+  end
+
+  def misskey_software?
+    info = instance_info
+    return false if info.nil?
+
+    %w(misskey calckey firefish).include?(info.software)
+  end
+
+  def misskey_searchability
+    visibility = visibility_from_audience
+    %i(public unlisted).include?(visibility) ? :public : :limited
   end
 
   def visibility_from_audience
@@ -518,6 +571,8 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       :public
     elsif audience_cc.any? { |cc| ActivityPub::TagManager.instance.public_collection?(cc) }
       :unlisted
+    elsif audience_to.include?('as:LoginOnly') || audience_to.include?('LoginUser')
+      :login
     elsif audience_to.include?(@account.followers_url)
       :private
     else

@@ -3,13 +3,15 @@
 class ActivityPub::NoteSerializer < ActivityPub::Serializer
   include FormattingHelper
 
-  context_extensions :atom_uri, :conversation, :sensitive, :voters_count, :searchable_by
+  context_extensions :atom_uri, :conversation, :sensitive, :voters_count, :searchable_by, :references, :limited_scope
 
   attributes :id, :type, :summary,
              :in_reply_to, :published, :url,
              :attributed_to, :to, :cc, :sensitive,
              :atom_uri, :in_reply_to_atom_uri,
-             :conversation, :searchable_by
+             :conversation, :searchable_by, :limited_scope
+
+  attribute :references, if: :not_private_post?
 
   attribute :content
   attribute :content_map, if: :language?
@@ -62,6 +64,10 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
         next: last_id ? ActivityPub::TagManager.instance.replies_uri_for(object, page: true, min_id: last_id) : ActivityPub::TagManager.instance.replies_uri_for(object, page: true, only_other_accounts: true)
       )
     )
+  end
+
+  def references
+    ActivityPub::TagManager.instance.references_uri_for(object)
   end
 
   def language?
@@ -142,8 +148,16 @@ class ActivityPub::NoteSerializer < ActivityPub::Serializer
     ActivityPub::TagManager.instance.searchable_by(object)
   end
 
+  def limited_scope
+    ActivityPub::TagManager.instance.limited_scope(object)
+  end
+
   def local?
     object.account.local?
+  end
+
+  def not_private_post?
+    !object.private_visibility? && !object.direct_visibility? && !object.limited_visibility?
   end
 
   def poll_options

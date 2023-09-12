@@ -1,19 +1,24 @@
 # frozen_string_literal: true
 
 class Api::V1::Antennas::AccountsController < Api::BaseController
-  # before_action -> { doorkeeper_authorize! :read, :'read:lists' }, only: [:show]
-  before_action -> { doorkeeper_authorize! :write, :'write:lists' } # , except: [:show]
+  before_action -> { doorkeeper_authorize! :read, :'read:lists' }, only: [:show]
+  before_action -> { doorkeeper_authorize! :write, :'write:lists' }, except: [:show]
 
   before_action :require_user!
   before_action :set_antenna
 
-  # after_action :insert_pagination_headers, only: :show
+  after_action :insert_pagination_headers, only: :show
+
+  def show
+    @accounts = load_accounts
+    render json: @accounts, each_serializer: REST::AccountSerializer
+  end
 
   def create
     ApplicationRecord.transaction do
       antenna_accounts.each do |account|
         @antenna.antenna_accounts.create!(account: account, exclude: false)
-        @antenna.update!(any_accounts: false)
+        @antenna.update!(any_accounts: false) if @antenna.any_accounts
       end
     end
 
@@ -30,6 +35,14 @@ class Api::V1::Antennas::AccountsController < Api::BaseController
 
   def set_antenna
     @antenna = Antenna.where(account: current_account).find(params[:antenna_id])
+  end
+
+  def load_accounts
+    if unlimited?
+      @antenna.accounts.without_suspended.includes(:account_stat).all
+    else
+      @antenna.accounts.without_suspended.includes(:account_stat).paginate_by_max_id(limit_param(DEFAULT_ACCOUNTS_LIMIT), params[:max_id], params[:since_id])
+    end
   end
 
   def antenna_accounts

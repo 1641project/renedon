@@ -26,6 +26,7 @@ class Admin::AccountAction
   alias include_statuses? include_statuses
 
   validates :type, :target_account, :current_account, presence: true
+  validates :type, inclusion: { in: TYPES }
 
   def initialize(attributes = {})
     @send_email_notification = true
@@ -53,6 +54,7 @@ class Admin::AccountAction
 
     process_email!
     process_queue!
+    notify!
   end
 
   def report
@@ -70,6 +72,10 @@ class Admin::AccountAction
       else
         TYPES - %w(none disable)
       end
+    end
+
+    def i18n_scope
+      :activerecord
     end
   end
 
@@ -100,6 +106,10 @@ class Admin::AccountAction
     # A log entry is only interesting if the warning contains
     # custom text from someone. Otherwise it's just noise.
     log_action(:create, @warning) if @warning.text.present? && type == 'none'
+  end
+
+  def notify!
+    LocalNotificationWorker.perform_async(target_account.id, @warning.id, 'AccountWarning', 'warning') if @warning && %w(none sensitive silence).include?(type)
   end
 
   def process_reports!

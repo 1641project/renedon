@@ -15,6 +15,7 @@
 #  emoji_reactions_count         :integer          default(0), not null
 #  test                          :integer          default(0), not null
 #  emoji_reaction_accounts_count :integer          default(0), not null
+#  status_referred_by_count      :integer          default(0), not null
 #
 
 class StatusStat < ApplicationRecord
@@ -44,6 +45,10 @@ class StatusStat < ApplicationRecord
 
   def emoji_reaction_accounts_count
     [attributes['emoji_reaction_accounts_count'], 0].max
+  end
+
+  def status_referred_by_count
+    [attributes['status_referred_by_count'] || 0, 0].max
   end
 
   private

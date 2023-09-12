@@ -12,6 +12,7 @@ class RemoveStatusService < BaseService
   # @option  [Boolean] :immediate
   # @option  [Boolean] :preserve
   # @option  [Boolean] :original_removed
+  # @option  [Boolean] :skip_streaming
   def call(status, **options)
     @payload  = Oj.dump(event: :delete, payload: status.id.to_s)
     @status   = status
@@ -45,6 +46,7 @@ class RemoveStatusService < BaseService
         remove_from_public
         remove_from_media if @status.with_media?
         remove_media
+        decrement_references
       end
 
       @status.destroy! if permanently?
@@ -52,6 +54,9 @@ class RemoveStatusService < BaseService
   end
 
   private
+
+  # The following FeedManager calls all do not result in redis publishes for
+  # streaming, as the `:update` option is false
 
   def remove_from_self
     FeedManager.instance.unpush_from_home(@account, @status)
@@ -76,6 +81,9 @@ class RemoveStatusService < BaseService
     Antenna.availables.where(list_id: 0).select(:id, :account_id).includes(account: :user).reorder(nil).find_each do |antenna|
       FeedManager.instance.unpush_from_home(antenna.account, @status)
     end
+    Antenna.availables.select(:id, :account_id).includes(account: :user).reorder(nil).find_each do |antenna|
+      FeedManager.instance.unpush_from_antenna(antenna, @status)
+    end
   end
 
   def remove_from_mentions
@@ -84,6 +92,8 @@ class RemoveStatusService < BaseService
     # and therefore the delete is already handled by sending it to all
     # followers. Here we send a delete to actively mentioned accounts
     # that may not follow the account
+
+    return if skip_streaming?
 
     @status.active_mentions.find_each do |mention|
       redis.publish("timeline:#{mention.account_id}", @payload)
@@ -113,7 +123,13 @@ class RemoveStatusService < BaseService
     # without us being able to do all the fancy stuff
 
     @status.reblogs.rewhere(deleted_at: [nil, @status.deleted_at]).includes(:account).reorder(nil).find_each do |reblog|
-      RemoveStatusService.new.call(reblog, original_removed: true)
+      RemoveStatusService.new.call(reblog, original_removed: true, skip_streaming: skip_streaming?)
+    end
+  end
+
+  def decrement_references
+    @status.references.each do |ref|
+      ref.decrement_count!(:status_referred_by_count)
     end
   end
 
@@ -124,6 +140,8 @@ class RemoveStatusService < BaseService
 
     return unless @status.public_visibility?
 
+    return if skip_streaming?
+
     @status.tags.map(&:name).each do |hashtag|
       redis.publish("timeline:hashtag:#{hashtag.mb_chars.downcase}", @payload)
       redis.publish("timeline:hashtag:#{hashtag.mb_chars.downcase}:local", @payload) if @status.local?
@@ -133,12 +151,16 @@ class RemoveStatusService < BaseService
   def remove_from_public
     return unless @status.public_visibility?
 
+    return if skip_streaming?
+
     redis.publish('timeline:public', @payload)
     redis.publish(@status.local? ? 'timeline:public:local' : 'timeline:public:remote', @payload)
   end
 
   def remove_from_media
     return unless @status.public_visibility?
+
+    return if skip_streaming?
 
     redis.publish('timeline:public:media', @payload)
     redis.publish(@status.local? ? 'timeline:public:local:media' : 'timeline:public:remote:media', @payload)
@@ -152,5 +174,9 @@ class RemoveStatusService < BaseService
 
   def permanently?
     @options[:immediate] || !(@options[:preserve] || @status.reported?)
+  end
+
+  def skip_streaming?
+    !!@options[:skip_streaming]
   end
 end

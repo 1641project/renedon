@@ -32,7 +32,7 @@ class BackupService < BaseService
       add_comma = true
 
       file.write(statuses.map do |status|
-        item = serialize_payload(ActivityPub::ActivityPresenter.from_status(status), ActivityPub::ActivitySerializer)
+        item = serialize_payload(ActivityPub::ActivityPresenter.from_status(status, use_bearcap: false), ActivityPub::ActivitySerializer)
         item.delete('@context')
 
         unless item[:type] == 'Announce' || item[:object][:attachment].blank?
@@ -77,8 +77,8 @@ class BackupService < BaseService
         path = m.file&.path
         next unless path
 
-        path = path.gsub(/\A.*\/system\//, '')
-        path = path.gsub(/\A\/+/, '')
+        path = path.gsub(%r{\A.*/system/}, '')
+        path = path.gsub(%r{\A/+}, '')
         download_to_zip(zipfile, m.file, path)
       end
 

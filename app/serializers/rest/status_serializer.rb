@@ -4,8 +4,9 @@ class REST::StatusSerializer < ActiveModel::Serializer
   include FormattingHelper
 
   attributes :id, :created_at, :in_reply_to_id, :in_reply_to_account_id,
-             :sensitive, :spoiler_text, :visibility, :visibility_ex, :language,
+             :sensitive, :spoiler_text, :visibility, :visibility_ex, :limited_scope, :language,
              :uri, :url, :replies_count, :reblogs_count, :searchability, :markdown,
+             :status_reference_ids, :status_references_count, :status_referred_by_count,
              :favourites_count, :emoji_reactions, :emoji_reactions_count, :reactions, :edited_at
 
   attribute :favourited, if: :current_user?
@@ -26,7 +27,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
   has_many :ordered_media_attachments, key: :media_attachments, serializer: REST::MediaAttachmentSerializer
   has_many :ordered_mentions, key: :mentions
   has_many :tags
-  has_many :emojis, serializer: REST::CustomEmojiSerializer
+  has_many :emojis, serializer: REST::CustomEmojiSlimSerializer
 
   has_one :preview_card, key: :card, serializer: REST::PreviewCardSerializer
   has_one :preloadable_poll, key: :poll, serializer: REST::PollSerializer
@@ -57,7 +58,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
     # UX differences
     if object.limited_visibility?
       'private'
-    elsif object.public_unlisted_visibility?
+    elsif object.public_unlisted_visibility? || object.login_visibility?
       'public'
     else
       object.visibility
@@ -66,6 +67,10 @@ class REST::StatusSerializer < ActiveModel::Serializer
 
   def visibility_ex
     object.visibility
+  end
+
+  def limited_scope
+    !object.none_limited? && object.limited_visibility? ? object.limited_scope : nil
   end
 
   def searchability
@@ -92,9 +97,25 @@ class REST::StatusSerializer < ActiveModel::Serializer
     ActivityPub::TagManager.instance.url_for(object)
   end
 
+  def status_reference_ids
+    @status_reference_ids = object.reference_objects.pluck(:target_status_id)
+  end
+
+  def status_references_count
+    status_reference_ids.size
+  end
+
+  def reblogs_count
+    relationships&.attributes_map&.dig(object.id, :reblogs_count) || object.reblogs_count
+  end
+
+  def favourites_count
+    relationships&.attributes_map&.dig(object.id, :favourites_count) || object.favourites_count
+  end
+
   def favourited
-    if instance_options && instance_options[:relationships]
-      instance_options[:relationships].favourites_map[object.id] || false
+    if relationships
+      relationships.favourites_map[object.id] || false
     else
       current_user.account.favourited?(object)
     end
@@ -116,40 +137,40 @@ class REST::StatusSerializer < ActiveModel::Serializer
   end
 
   def reblogged
-    if instance_options && instance_options[:relationships]
-      instance_options[:relationships].reblogs_map[object.id] || false
+    if relationships
+      relationships.reblogs_map[object.id] || false
     else
       current_user.account.reblogged?(object)
     end
   end
 
   def muted
-    if instance_options && instance_options[:relationships]
-      instance_options[:relationships].mutes_map[object.conversation_id] || false
+    if relationships
+      relationships.mutes_map[object.conversation_id] || false
     else
       current_user.account.muting_conversation?(object.conversation)
     end
   end
 
   def bookmarked
-    if instance_options && instance_options[:relationships]
-      instance_options[:relationships].bookmarks_map[object.id] || false
+    if relationships
+      relationships.bookmarks_map[object.id] || false
     else
       current_user.account.bookmarked?(object)
     end
   end
 
   def pinned
-    if instance_options && instance_options[:relationships]
-      instance_options[:relationships].pins_map[object.id] || false
+    if relationships
+      relationships.pins_map[object.id] || false
     else
       current_user.account.pinned?(object)
     end
   end
 
   def filtered
-    if instance_options && instance_options[:relationships]
-      instance_options[:relationships].filters_map[object.id] || []
+    if relationships
+      relationships.filters_map[object.id] || []
     else
       current_user.account.status_matches_filters(object)
     end
@@ -159,7 +180,7 @@ class REST::StatusSerializer < ActiveModel::Serializer
     current_user? &&
       current_user.account_id == object.account_id &&
       !object.reblog? &&
-      %w(public unlisted public_unlisted private).include?(object.visibility)
+      %w(public unlisted public_unlisted login private).include?(object.visibility)
   end
 
   def reactions?
@@ -172,6 +193,12 @@ class REST::StatusSerializer < ActiveModel::Serializer
 
   def ordered_mentions
     object.active_mentions.to_a.sort_by(&:id)
+  end
+
+  private
+
+  def relationships
+    instance_options && instance_options[:relationships]
   end
 
   class ApplicationSerializer < ActiveModel::Serializer

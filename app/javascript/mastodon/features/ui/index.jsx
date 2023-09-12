@@ -1,34 +1,42 @@
-import classNames from 'classnames';
-import React from 'react';
-import { HotKeys } from 'react-hotkeys';
-import { defineMessages, injectIntl } from 'react-intl';
-import { connect } from 'react-redux';
-import { Redirect, Route, withRouter } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import NotificationsContainer from './containers/notifications_container';
-import LoadingBarContainer from './containers/loading_bar_container';
-import ModalContainer from './containers/modal_container';
-import { layoutFromWindow } from 'mastodon/is_mobile';
+import { PureComponent } from 'react';
+
+import { defineMessages, injectIntl } from 'react-intl';
+
+import classNames from 'classnames';
+import { Redirect, Route, withRouter } from 'react-router-dom';
+
+import { connect } from 'react-redux';
+
 import { debounce } from 'lodash';
-import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../actions/compose';
-import { expandHomeTimeline } from '../../actions/timelines';
-import { expandNotifications } from '../../actions/notifications';
-import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
-import { clearHeight } from '../../actions/height_cache';
+import { HotKeys } from 'react-hotkeys';
+
 import { focusApp, unfocusApp, changeLayout } from 'mastodon/actions/app';
 import { synchronouslySubmitMarkers, submitMarkers, fetchMarkers } from 'mastodon/actions/markers';
-import { WrappedSwitch, WrappedRoute } from './util/react_router_helpers';
+import { INTRODUCTION_VERSION } from 'mastodon/actions/onboarding';
+import PictureInPicture from 'mastodon/features/picture_in_picture';
+import { layoutFromWindow } from 'mastodon/is_mobile';
+
+import { uploadCompose, resetCompose, changeComposeSpoilerness } from '../../actions/compose';
+import { clearHeight } from '../../actions/height_cache';
+import { expandNotifications } from '../../actions/notifications';
+import { fetchServer, fetchServerTranslationLanguages } from '../../actions/server';
+import { expandHomeTimeline } from '../../actions/timelines';
+import initialState, { me, owner, singleUserMode, trendsEnabled, trendsAsLanding } from '../../initial_state';
+
 import BundleColumnError from './components/bundle_column_error';
+import Header from './components/header';
 import UploadArea from './components/upload_area';
 import ColumnsAreaContainer from './containers/columns_area_container';
-import PictureInPicture from 'mastodon/features/picture_in_picture';
+import LoadingBarContainer from './containers/loading_bar_container';
+import ModalContainer from './containers/modal_container';
+import NotificationsContainer from './containers/notifications_container';
 import {
   Compose,
   Status,
   GettingStarted,
   KeyboardShortcuts,
-  PublicTimeline,
-  CommunityTimeline,
+  Firehose,
   AccountTimeline,
   AccountGallery,
   HomeTimeline,
@@ -37,13 +45,17 @@ import {
   Reblogs,
   Favourites,
   EmojiReactions,
+  StatusReferences,
   DirectTimeline,
   HashtagTimeline,
+  AntennaTimeline,
   Notifications,
   FollowRequests,
   FavouritedStatuses,
   EmojiReactedStatuses,
   BookmarkedStatuses,
+  BookmarkCategories,
+  BookmarkCategoryStatuses,
   FollowedTags,
   ListTimeline,
   Blocks,
@@ -51,15 +63,18 @@ import {
   Mutes,
   PinnedStatuses,
   Lists,
+  Antennas,
+  Circles,
+  AntennaSetting,
   Directory,
   Explore,
+  ReactionDeck,
   Onboarding,
   About,
   PrivacyPolicy,
+  CommunityTimeline,
 } from './util/async-components';
-import initialState, { me, owner, singleUserMode, showTrends, trendsAsLanding } from '../../initial_state';
-import { INTRODUCTION_VERSION } from 'mastodon/actions/onboarding';
-import Header from './components/header';
+import { WrappedSwitch, WrappedRoute } from './util/react_router_helpers';
 
 // Dummy import, to make sure that <Status /> ends up in the application bundle.
 // Without this it ends up in ~8 very commonly used bundles.
@@ -114,7 +129,7 @@ const keyMap = {
   openMedia: 'e',
 };
 
-class SwitchingColumnsArea extends React.PureComponent {
+class SwitchingColumnsArea extends PureComponent {
 
   static contextTypes = {
     identity: PropTypes.object,
@@ -123,11 +138,11 @@ class SwitchingColumnsArea extends React.PureComponent {
   static propTypes = {
     children: PropTypes.node,
     location: PropTypes.object,
-    mobile: PropTypes.bool,
+    singleColumn: PropTypes.bool,
   };
 
   UNSAFE_componentWillMount () {
-    if (this.props.mobile) {
+    if (this.props.singleColumn) {
       document.body.classList.toggle('layout-single-column', true);
       document.body.classList.toggle('layout-multiple-columns', false);
     } else {
@@ -141,9 +156,9 @@ class SwitchingColumnsArea extends React.PureComponent {
       this.node.handleChildrenContentChange();
     }
 
-    if (prevProps.mobile !== this.props.mobile) {
-      document.body.classList.toggle('layout-single-column', this.props.mobile);
-      document.body.classList.toggle('layout-multiple-columns', !this.props.mobile);
+    if (prevProps.singleColumn !== this.props.singleColumn) {
+      document.body.classList.toggle('layout-single-column', this.props.singleColumn);
+      document.body.classList.toggle('layout-multiple-columns', !this.props.singleColumn);
     }
   }
 
@@ -154,29 +169,34 @@ class SwitchingColumnsArea extends React.PureComponent {
   };
 
   render () {
-    const { children, mobile } = this.props;
+    const { children, singleColumn } = this.props;
     const { signedIn } = this.context.identity;
+    const pathName = this.props.location.pathname;
 
     let redirect;
 
     if (signedIn) {
-      if (mobile) {
+      if (singleColumn) {
         redirect = <Redirect from='/' to='/home' exact />;
       } else {
-        redirect = <Redirect from='/' to='/getting-started' exact />;
+        redirect = <Redirect from='/' to='/deck/getting-started' exact />;
       }
     } else if (singleUserMode && owner && initialState?.accounts[owner]) {
       redirect = <Redirect from='/' to={`/@${initialState.accounts[owner].username}`} exact />;
-    } else if (showTrends && trendsAsLanding) {
+    } else if (trendsEnabled && trendsAsLanding) {
       redirect = <Redirect from='/' to='/explore' exact />;
     } else {
       redirect = <Redirect from='/' to='/about' exact />;
     }
 
     return (
-      <ColumnsAreaContainer ref={this.setRef} singleColumn={mobile}>
+      <ColumnsAreaContainer ref={this.setRef} singleColumn={singleColumn}>
         <WrappedSwitch>
           {redirect}
+
+          {singleColumn ? <Redirect from='/deck' to='/home' exact /> : null}
+          {singleColumn && pathName.startsWith('/deck/') ? <Redirect from={pathName} to={pathName.slice(5)} /> : null}
+          {!singleColumn && pathName === '/getting-started' ? <Redirect from='/getting-started' to='/deck/getting-started' exact /> : null}
 
           <WrappedRoute path='/getting-started' component={GettingStarted} content={children} />
           <WrappedRoute path='/keyboard-shortcuts' component={KeyboardShortcuts} content={children} />
@@ -184,17 +204,27 @@ class SwitchingColumnsArea extends React.PureComponent {
           <WrappedRoute path='/privacy-policy' component={PrivacyPolicy} content={children} />
 
           <WrappedRoute path={['/home', '/timelines/home']} component={HomeTimeline} content={children} />
-          <WrappedRoute path={['/public', '/timelines/public']} exact component={PublicTimeline} content={children} />
-          <WrappedRoute path={['/public/local', '/timelines/public/local']} exact component={CommunityTimeline} content={children} />
+          <Redirect from='/timelines/public' to='/public' exact />
+          <Redirect from='/timelines/public/local' to='/public/local' exact />
+          <WrappedRoute path='/public' exact component={Firehose} componentParams={{ feedType: 'public' }} content={children} />
+          <WrappedRoute path='/public/local' exact component={Firehose} componentParams={{ feedType: 'community' }} content={children} />
+          <WrappedRoute path='/public/remote' exact component={Firehose} componentParams={{ feedType: 'public:remote' }} content={children} />
+          <WrappedRoute path='/public/local/fixed' exact component={CommunityTimeline} content={children} />
           <WrappedRoute path={['/conversations', '/timelines/direct']} component={DirectTimeline} content={children} />
           <WrappedRoute path='/tags/:id' component={HashtagTimeline} content={children} />
           <WrappedRoute path='/lists/:id' component={ListTimeline} content={children} />
+          <WrappedRoute path='/antennasw/:id' component={AntennaSetting} content={children} />
+          <WrappedRoute path='/antennast/:id' component={AntennaTimeline} content={children} />
           <WrappedRoute path='/notifications' component={Notifications} content={children} />
           <WrappedRoute path='/favourites' component={FavouritedStatuses} content={children} />
           <WrappedRoute path='/emoji_reactions' component={EmojiReactedStatuses} content={children} />
 
           <WrappedRoute path='/bookmarks' component={BookmarkedStatuses} content={children} />
+          <WrappedRoute path='/bookmark_categories/:id' component={BookmarkCategoryStatuses} content={children} />
+          <WrappedRoute path='/bookmark_categories' component={BookmarkCategories} content={children} />
           <WrappedRoute path='/pinned' component={PinnedStatuses} content={children} />
+
+          <WrappedRoute path='/reaction_deck' component={ReactionDeck} content={children} />
 
           <WrappedRoute path='/start' exact component={Onboarding} content={children} />
           <WrappedRoute path='/directory' component={Directory} content={children} />
@@ -211,6 +241,7 @@ class SwitchingColumnsArea extends React.PureComponent {
           <WrappedRoute path='/@:acct/:statusId/reblogs' component={Reblogs} content={children} />
           <WrappedRoute path='/@:acct/:statusId/favourites' component={Favourites} content={children} />
           <WrappedRoute path='/@:acct/:statusId/emoji_reactions' component={EmojiReactions} content={children} />
+          <WrappedRoute path='/@:acct/:statusId/references' component={StatusReferences} content={children} />
 
           {/* Legacy routes, cannot be easily factored with other routes because they share a param name */}
           <WrappedRoute path='/timelines/tag/:id' component={HashtagTimeline} content={children} />
@@ -219,6 +250,7 @@ class SwitchingColumnsArea extends React.PureComponent {
           <WrappedRoute path='/statuses/:statusId/reblogs' component={Reblogs} content={children} />
           <WrappedRoute path='/statuses/:statusId/favourites' component={Favourites} content={children} />
           <WrappedRoute path='/statuses/:statusId/emoji_reactions' component={EmojiReactions} content={children} />
+          <WrappedRoute path='/statuses/:statusId/references' component={StatusReferences} content={children} />
 
           <WrappedRoute path='/follow_requests' component={FollowRequests} content={children} />
           <WrappedRoute path='/blocks' component={Blocks} content={children} />
@@ -226,6 +258,8 @@ class SwitchingColumnsArea extends React.PureComponent {
           <WrappedRoute path='/followed_tags' component={FollowedTags} content={children} />
           <WrappedRoute path='/mutes' component={Mutes} content={children} />
           <WrappedRoute path='/lists' component={Lists} content={children} />
+          <WrappedRoute path='/antennasw' component={Antennas} content={children} />
+          <WrappedRoute path='/circles' component={Circles} content={children} />
 
           <Route component={BundleColumnError} />
         </WrappedSwitch>
@@ -235,7 +269,7 @@ class SwitchingColumnsArea extends React.PureComponent {
 
 }
 
-class UI extends React.PureComponent {
+class UI extends PureComponent {
 
   static contextTypes = {
     router: PropTypes.object.isRequired,
@@ -392,11 +426,6 @@ class UI extends React.PureComponent {
       navigator.serviceWorker.addEventListener('message', this.handleServiceWorkerPostMessage);
     }
 
-    // On first launch, redirect to the follow recommendations page
-    if (signedIn && this.props.firstLaunch) {
-      this.context.router.history.replace('/start');
-    }
-
     if (signedIn) {
       this.props.dispatch(fetchMarkers());
       this.props.dispatch(expandHomeTimeline());
@@ -477,10 +506,12 @@ class UI extends React.PureComponent {
   };
 
   handleHotkeyBack = () => {
-    if (window.history && window.history.state) {
-      this.context.router.history.goBack();
+    const { router } = this.context;
+
+    if (router.history.location?.state?.fromMastodon) {
+      router.history.goBack();
     } else {
-      this.context.router.history.push('/');
+      router.history.push('/');
     }
   };
 
@@ -580,7 +611,7 @@ class UI extends React.PureComponent {
         <div className={classNames('ui', { 'is-composing': isComposing })} ref={this.setRef} style={{ pointerEvents: dropdownMenuIsOpen ? 'none' : null }}>
           <Header />
 
-          <SwitchingColumnsArea location={location} mobile={layout === 'mobile' || layout === 'single-column'}>
+          <SwitchingColumnsArea location={location} singleColumn={layout === 'mobile' || layout === 'single-column'}>
             {children}
           </SwitchingColumnsArea>
 

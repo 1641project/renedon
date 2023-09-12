@@ -31,7 +31,8 @@ class Api::V1::ListsController < Api::BaseController
   end
 
   def destroy
-    raise Mastodon::ValidationError, I18n.t('antennas.errors.remove_list_with_antenna') if Antenna.where(list_id: @list.id).any?
+    antenna = Antenna.find_by(list_id: @list.id)
+    antenna.update!(list_id: 0) if antenna.present?
 
     @list.destroy!
     render_empty
@@ -44,6 +45,6 @@ class Api::V1::ListsController < Api::BaseController
   end
 
   def list_params
-    params.permit(:title, :replies_policy)
+    params.permit(:title, :replies_policy, :exclusive)
   end
 end

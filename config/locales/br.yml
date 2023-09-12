@@ -1,4 +1,3 @@
----
 br:
   about:
     contact_missing: Andermenet
@@ -7,20 +6,20 @@ br:
   accounts:
     follow: Heuliañ
     followers:
+      one: Heulier·ez
+      two: Heulier·ez
       few: Heulier·ez
       many: Heulier·ez
-      one: Heulier·ez
       other: Heulier·ez
-      two: Heulier·ez
     following: Koumanantoù
     last_active: oberiantiz ziwezhañ
     nothing_here: N'eus netra amañ !
     posts:
+      one: Toud
+      two: Toudoù
       few: Toudoù
       many: Toudoù
-      one: Toud
       other: Toud
-      two: Toudoù
     posts_tab_heading: Toudoù
   admin:
     account_moderation_notes:
@@ -93,8 +92,8 @@ br:
         destroy_status: Dilemel ar c'hannad
         update_status: Hizivaat ar c'hannad
       actions:
-        destroy_status_html: Dilamet eo bet toud %{target} gant %{name}
-        update_status_html: Hizivaet eo bet toud %{target} gant %{name}
+        destroy_status_html: "Dilamet eo bet toud %{target} gant %{name}"
+        update_status_html: "Hizivaet eo bet toud %{target} gant %{name}"
       title: Renabl aodit
     announcements:
       live: War-eeun
@@ -194,11 +193,11 @@ br:
     reports:
       account:
         notes:
+          one: "%{count} a notennoù"
+          two: "%{count} a notennoù"
           few: "%{count} a notennoù"
           many: "%{count} a notennoù"
-          one: "%{count} a notennoù"
           other: "%{count} a notennoù"
-          two: "%{count} a notennoù"
       action_log: Renabl aodit
       are_you_sure: Ha sur oc'h?
       comment:
@@ -254,7 +253,7 @@ br:
       with_media: Gant mediaoù
     strikes:
       actions:
-        delete_statuses: Dilamet eo bet toudoù %{target} gant %{name}
+        delete_statuses: "Dilamet eo bet toudoù %{target} gant %{name}"
     trends:
       allow: Aotren
       links:
@@ -288,10 +287,11 @@ br:
     view: 'Sellet :'
     view_status: Gwelet ar c'hannad
   auth:
-    change_password: Ger-tremen
     delete_account: Dilemel ar gont
+    delete_account_html: Ma fell deoc'h dilemel ho kont e c'hellit <a href="%{path}">klikañ amañ</a>. Goulennet e vo ganeoc'h kadarnaat an obererezh.
     login: Mont tre
     logout: Digennaskañ
+    migrate_account_html: Ma fell deoc'h adkas ar gont-mañ war-zu unan all e c'hellit <a href="%{path}">arventenniñ an dra-se amañ</a>.
     providers:
       cas: CAS
       saml: SAML
@@ -300,11 +300,6 @@ br:
     security: Diogelroez
     status:
       account_status: Statud ar gont
-  authorize_follow:
-    follow: Heuliañ
-    post_follow:
-      web: Distreiñ d'an etrefas web
-    title: Heuliañ %{acct}
   challenge:
     confirm: Kenderc' hel
     invalid_password: Ger-tremen diwiriek
@@ -334,6 +329,14 @@ br:
       created_at: Deiziad
       title_actions:
         none: Diwall
+  errors:
+    '400': The request you submitted was invalid or malformed.
+    '403': You don't have permission to view this page.
+    '404': The page you are looking for isn't here.
+    '406': This page is not available in the requested format.
+    '410': The page you were looking for doesn't exist here anymore.
+    '429': Too many requests
+    '503': The page could not be served due to a temporary server failure.
   exports:
     archive_takeout:
       date: Deiziad
@@ -351,11 +354,11 @@ br:
     index:
       delete: Dilemel
       statuses:
+        one: "%{count} c'hannad"
+        two: "%{count} gannad"
         few: "%{count} a gannadoù"
         many: "%{count} a gannadoù"
-        one: "%{count} c'hannad"
         other: "%{count} a gannadoù"
-        two: "%{count} gannad"
       title: Siloù
     statuses:
       index:
@@ -388,6 +391,8 @@ br:
     table:
       uses: Implijoù
     title: Pediñ tud
+  migrations:
+    incoming_migrations_html: Evit dilojañ ur gont all da homañ e rankit <a href="%{path}">sevel un alias</a> da gentañ.
   moderation:
     title: Habaskadur
   notification_mailer:
@@ -396,12 +401,12 @@ br:
     mention:
       action: Respont
     reblog:
-      subject: 'Gant %{name} eo bet skignet ho toud '
+      subject: "Gant %{name} eo bet skignet ho toud "
       title: Skignadenn nevez
     status:
-      subject: Embannet ez eus bet traoù gant %{name}
+      subject: "Embannet ez eus bet traoù gant %{name}"
     update:
-      subject: Kemmet eo bet ur c'hannad gant %{name}
+      subject: "Kemmet eo bet ur c'hannad gant %{name}"
   number:
     human:
       decimal_units:
@@ -473,11 +478,11 @@ br:
   statuses:
     attached:
       image:
+        one: "%{count} skeudenn"
+        two: "%{count} skeudenn"
         few: "%{count} skeudenn"
         many: "%{count} skeudenn"
-        one: "%{count} skeudenn"
         other: "%{count} skeudenn"
-        two: "%{count} skeudenn"
     poll:
       vote: Mouezhiañ
     show_more: Diskouez muioc'h
@@ -495,16 +500,13 @@ br:
       '604800': 1 sizhunvezh
       '63113904': 2 vloavezh
       '7889238': 3 months
-  stream_entries:
-    pinned: Toud spilhennet
-    reblogged: en·he deus skignet
   themes:
     default: Mastodoñ (Teñval)
     mastodon-light: Mastodoñ (Sklaer)
   time:
     formats:
       default: "%d a viz %b %Y, %H:%M"
-      month: Miz %b %Y
+      month: "Miz %b %Y"
       time: "%H:%M"
   two_factor_authentication:
     add: Ouzhpennañ
