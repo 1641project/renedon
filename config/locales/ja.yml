@@ -1,9 +1,9 @@
 ja:
   about:
-    about_mastodon_html: 'Mastodonは、オープンなウェブプロトコルを採用した、自由でオープンソースなソーシャルネットワークです。電子メールのような分散型の仕組みを採っています。'
+    about_mastodon_html: 'Re:nedonは、オープンなウェブプロトコルを採用した、自由でオープンソースなソーシャルネットワークです。電子メールのような分散型の仕組みを採っています。'
     contact_missing: 未設定
     contact_unavailable: N/A
-    hosted_on: Mastodon hosted on %{domain}
+    hosted_on: Re:nedon hosted on %{domain}
     title: このサーバーについて
   accounts:
     follow: フォロー
@@ -716,7 +716,7 @@ ja:
         moderation: モデレーション
         special: スペシャル
       delete: 削除
-      description_html: <strong>ユーザー ロール</strong>を使用すると、ユーザーがアクセスできる Mastodon の機能や領域をカスタマイズできます。
+      description_html: <strong>ユーザー ロール</strong>を使用すると、ユーザーがアクセスできる Re:nedon の機能や領域をカスタマイズできます。
       edit: '『%{name}』のロールを編集'
       everyone: デフォルトの権限
       everyone_full_description_html: これは、割り当てられたロールを持っていないものであっても、 <strong>すべてのユーザー</strong> に影響を与える <strong>基本ロール</strong>です。 他のすべてのロールは、そこから権限を継承します。
@@ -793,13 +793,13 @@ ja:
         preamble: ウェブインターフェースをカスタマイズします。
         title: 外観
       branding:
-        preamble: サーバーのブランディングは、ネットワーク上の他のサーバーと区別するためのものです。この情報は、Mastodon の Web インターフェース、ネイティブアプリケーション、他の Web サイトやメッセージングアプリのリンクプレビューなど、様々な所で表示される可能性があります。このため、明確で短く、簡潔に記載することをおすすめします。
+        preamble: サーバーのブランディングは、ネットワーク上の他のサーバーと区別するためのものです。この情報は、Re:nedon の Web インターフェース、ネイティブアプリケーション、他の Web サイトやメッセージングアプリのリンクプレビューなど、様々な所で表示される可能性があります。このため、明確で短く、簡潔に記載することをおすすめします。
         title: ブランディング
       captcha_enabled:
         desc_html: この機能は hCaptcha による外部スクリプトを使用しますが、hCaptcha にはセキュリティとプライバシーの懸念が考えられます。また、<strong>CAPTCHAにより新規登録のアクセシビリティが大幅に損なわれる可能性があり、身体および精神障害者においては特に顕著です。</strong>以上の理由から、承認制や招待制を基本とするなど、代わりの登録手順を提供することを検討してください。
         title: 新規ユーザーのアカウント確認にCHAPCHAを要求する
       content_retention:
-        preamble: ユーザーが生成したコンテンツがどのように Mastodon に保存されるかを管理します。
+        preamble: ユーザーが生成したコンテンツがどのように Re:nedon に保存されるかを管理します。
         title: コンテンツの保持
       default_noindex:
         desc_html: この設定を自分で変更していない全ユーザーに影響します
@@ -807,7 +807,7 @@ ja:
       discovery:
         emoji_reactions: スタンプ
         follow_recommendations: おすすめフォロー
-        preamble: Mastodon を知らないユーザーを取り込むには、興味深いコンテンツを浮上させることが重要です。サーバー上で様々なディスカバリー機能がどのように機能するかを制御します。
+        preamble: Re:nedon を知らないユーザーを取り込むには、興味深いコンテンツを浮上させることが重要です。サーバー上で様々なディスカバリー機能がどのように機能するかを制御します。
         profile_directory: ディレクトリ
         public_timelines: 公開タイムライン
         publish_discovered_servers: 接続しているサーバーを公開する
@@ -837,7 +837,7 @@ ja:
       destroyed_msg: ファイルを削除しました！
     software_updates:
       critical_update: "※緊急 (速やかに適用してください)"
-      description: Mastodonサーバーはいつでも最新の状態を保ち、新しい機能や修正を利用できるようにしておくことをおすすめします。またセキュリティの問題が発生した場合は、速やかにMastodonをアップデートすることが大切です。Mastodonは30分おきにアップデートを確認し、通知設定に応じて新しいアップデートをメールで通知します。
+      description: Re:nedonサーバーはいつでも最新の状態を保ち、新しい機能や修正を利用できるようにしておくことをおすすめします。またセキュリティの問題が発生した場合は、速やかにRe:nedonをアップデートすることが大切です。Re:nedonは30分おきにアップデートを確認し、通知設定に応じて新しいアップデートをメールで通知します。
       documentation_link: もっと見る
       release_notes: リリースノート
       title: 利用可能なアップデート
@@ -902,7 +902,7 @@ ja:
         message_html: Elasticsearchのインデックスのマッピング定義が古くなっています。<code>tootctl search deploy --only=%{value}</code> を実行してインデックスを更新してください
       elasticsearch_preset:
         action: 詳細情報
-        message_html: Elasticsearchクラスターはマルチノード構成になっていますが、Mastodonがマルチノード構成向けに設定されていません。
+        message_html: Elasticsearchクラスターはマルチノード構成になっていますが、Re:nedonがマルチノード構成向けに設定されていません。
       elasticsearch_preset_single_node:
         action: 詳細情報
         message_html: Elasticsearchクラスターはシングルノード構成になっています。<code>ES_PRESET</code> を <code>single_node_cluster</code> に設定してください。
@@ -920,10 +920,10 @@ ja:
         message_html: "%{value}キューに対応するSidekiqプロセスがありません。Sidekiqの設定を確認してください。"
       software_version_critical_check:
         action: 利用可能な更新を見る
-        message_html: 緊急のMastodonアップデートがあります。速やかに適用してください。
+        message_html: 緊急のRe:nedonアップデートがあります。速やかに適用してください。
       software_version_patch_check:
         action: 詳細
-        message_html: Mastodonのバグ修正アップデートが利用可能です。
+        message_html: Re:nedonのバグ修正アップデートが利用可能です。
       upload_check_privacy_error:
         action: ここを開いて詳細を確認してください
         message_html: "<strong>Web サーバーが正しく設定されていません。ユーザーのプライバシーが危険な状態になっています。</strong>"
@@ -1007,7 +1007,7 @@ ja:
     webhooks:
       add_new: エンドポイントを追加
       delete: 削除
-      description_html: <strong>Webhook</strong> により、Mastodon は選択されたイベントの<strong>リアルタイム通知</strong>をアプリケーションにプッシュします。これにより、アプリケーションは<strong>自動的に処理を行うことができます</strong>。
+      description_html: <strong>Webhook</strong> により、Re:nedon は選択されたイベントの<strong>リアルタイム通知</strong>をアプリケーションにプッシュします。これにより、アプリケーションは<strong>自動的に処理を行うことができます</strong>。
       disable: 無効化
       disabled: 無効
       edit: エンドポイントを編集
@@ -1037,8 +1037,8 @@ ja:
       next_steps: モデレーションの決定を取り消すために申し立てを承認するか、無視することができます。
       subject: "%{instance}で%{username}さんからモデレーションへの申し立てが届きました。"
     new_critical_software_updates:
-      body: 重要な修正を含むMastodonのアップデートがリリースされています。早急にアップデートを行ってください。
-      subject: 緊急のMastodonアップデートがあります［%{instance}］
+      body: 重要な修正を含むRe:nedonのアップデートがリリースされています。早急にアップデートを行ってください。
+      subject: 緊急のRe:nedonアップデートがあります［%{instance}］
     new_pending_account:
       body: 新しいアカウントの詳細は以下の通りです。この申請を承認または却下することができます。
       subject: '%{instance}で新しいアカウント (%{username}) が承認待ちです'
@@ -1047,8 +1047,8 @@ ja:
       body_remote: "%{domain}の誰かが%{target}さんを通報しました"
       subject: "%{instance}の新しい通報 (#%{id})"
     new_software_updates:
-      body: Mastodonの新しいアップデートがリリースされました。
-      subject: Mastodonのアップデートがあります［%{instance}］
+      body: Re:nedonの新しいアップデートがリリースされました。
+      subject: Re:nedonのアップデートがあります［%{instance}］
     new_trends:
       body: '以下の項目は、公開する前に審査が必要です。'
       new_trending_links:
@@ -1163,9 +1163,9 @@ ja:
     delete_account: アカウントの削除
     delete_account_html: アカウントを削除したい場合、<a href="%{path}">こちら</a>から手続きが行えます。削除する前に、確認画面があります。
     description:
-      prefix_invited_by_user: "@%{name}さんがあなたをこのMastodonサーバーに招待しました"
-      prefix_sign_up: 今すぐMastodonを始めよう！
-      suffix: アカウントがあれば、どんなMastodon互換サーバーのユーザーでもフォローしたりメッセージをやり取りできるようになります！
+      prefix_invited_by_user: "@%{name}さんがあなたをこのRe:nedonサーバーに招待しました"
+      prefix_sign_up: 今すぐRe:nedonを始めよう！
+      suffix: アカウントがあれば、どんなRe:nedon互換サーバーのユーザーでもフォローしたりメッセージをやり取りできるようになります！
     didnt_get_confirmation: 確認メールを受信できない場合は
     dont_have_your_security_key: セキュリティキーを持っていませんか？
     forgot_password: パスワードをお忘れですか？
@@ -1212,7 +1212,7 @@ ja:
       title: '%{domain}にログイン'
     sign_up:
       manual_review: '%{domain} への登録にはモデレーターによる承認が必要です。審査の参考になるように、簡単な自己紹介や %{domain} に登録したい理由などを記入してください。'
-      preamble: この Mastodon サーバーのアカウントがあれば、ネットワーク上の他の人のアカウントがどこでホストされているかに関係なく、その人をフォローすることができます。
+      preamble: この Re:nedon サーバーのアカウントがあれば、ネットワーク上の他の人のアカウントがどこでホストされているかに関係なく、その人をフォローすることができます。
       title: さあ %{domain} でセットアップしましょう.
     status:
       account_status: アカウントの状態
@@ -1317,7 +1317,7 @@ ja:
       content: もうしわけありませんが、なにかが間違っています。
       title: このページは正しくありません
     '503': 一時的なサーバー障害のため利用することができません。
-    noscript_html: Mastodonのウェブアプリケーションを利用する場合はJavaScriptを有効にしてください。またはあなたのプラットフォーム向けの<a href="%{apps_path}">Mastodonネイティブアプリ</a>を探すことができます。
+    noscript_html: Re:nedonのウェブアプリケーションを利用する場合はJavaScriptを有効にしてください。またはあなたのプラットフォーム向けの<a href="%{apps_path}">Re:nedonネイティブアプリ</a>を探すことができます。
   existing_username_validator:
     not_found: そのようなユーザー名はローカルに見つかりませんでした
     not_found_multiple: '%{usernames}さんは見つかりませんでした'
@@ -1497,7 +1497,7 @@ ja:
     unsubscribe:
       action: 購読を解除する
       complete: 購読を解除しました
-      confirmation_html: '%{domain} の Mastodon による %{email} への%{type}を購読解除しますか？ 再購読が必要になった場合は<a href="%{settings_path}">メール通知の設定</a>からいつでも再開できます。'
+      confirmation_html: '%{domain} の Re:nedon による %{email} への%{type}を購読解除しますか？ 再購読が必要になった場合は<a href="%{settings_path}">メール通知の設定</a>からいつでも再開できます。'
       emails:
         notification_emails:
           favourite: お気に入り登録の通知メール
@@ -1506,7 +1506,7 @@ ja:
           mention: 返信の通知メール
           reblog: ブーストの通知メール
       resubscribe_html: 間違って配信を停止した場合は、 <a href="%{settings_path}">メール通知設定</a>から再登録できます。
-      success_html: "%{domain} の Mastodon から %{email} への%{type}の配信が停止されました。"
+      success_html: "%{domain} の Re:nedon から %{email} への%{type}の配信が停止されました。"
       title: 購読の解除
   media_attachments:
     validations:
@@ -1642,20 +1642,20 @@ ja:
     searchability: あなたの投稿の検索許可
     visibility: 公開範囲
   privacy:
-    hint_html: "<strong>プロフィールの見えかたや、ほかのユーザーからの見つかりやすさを設定します。</strong>Mastodonには自分のアカウントのことをより多くの人に知ってもらうためのさまざまな機能があり、有効・無効をそれぞれ切り換えられます。使いかたや好みに合わせて調節しましょう。"
+    hint_html: "<strong>プロフィールの見えかたや、ほかのユーザーからの見つかりやすさを設定します。</strong>Re:nedonには自分のアカウントのことをより多くの人に知ってもらうためのさまざまな機能があり、有効・無効をそれぞれ切り換えられます。使いかたや好みに合わせて調節しましょう。"
     privacy: プライバシー
     privacy_hint_html: 自分に関する情報をどの程度開示するかについての設定項目です。ユーザーはほかのアカウントのフォロー一覧を見て興味のあるアカウントを探したり、投稿元のアプリ名を見て自分が使いたいアプリの参考にすることがあります。希望に応じて、これらを見られないようにできます。
     reach: つながりやすさ
     reach_hint_html: ほかのユーザーからの見つかりやすさと、フォローされる方法についての設定項目です。「エクスプローラー」やおすすめのユーザーに掲載するか、また新しいフォロワーをどのように受け入れるかをここで変更できます。
     search: 被検索性
-    search_hint_html: 検索での見つかりやすさに関する設定項目です。公開投稿を検索できるようにするかや、Mastodonの外からweb検索でたどり着けるようにするかをここで変更できます。ただし検索エンジンのなかには、この設定に従わずに公開されている情報を利用するものがあるかもしれません。
+    search_hint_html: 検索での見つかりやすさに関する設定項目です。公開投稿を検索できるようにするかや、Re:nedonの外からweb検索でたどり着けるようにするかをここで変更できます。ただし検索エンジンのなかには、この設定に従わずに公開されている情報を利用するものがあるかもしれません。
     title: プライバシーとつながりやすさ
   privacy_extra:
     hint_html: これらはkmyblue独自のプライバシー設定項目です。この機能を利用することで、あなたは追加の恩恵を受けることができます。なおこれらの設定の一部は他のサーバーにも送信されますが、kmyblue以外で対応するソフトウェアは現在確認できていません。他のサーバーではこれらの設定は無視されること、ご了承ください。
     post_processing_hint_html: 投稿された情報に対して、システムが追加で行うことができる操作を制御します。これらには、第三者のサイトへあなたの投稿に関する情報の送信を伴う設定も含まれます。
     post_processing: 投稿の処理
     stop_deliver: 配送制限
-    stop_deliver_hint_html: Mastodonの投稿を、他のソフトウェアでは自由に検索することができます。Mastodon内で行ったプライバシーの設定は無視され、あなたの投稿が意図しない人に見つかるおそれがあります。ここでは、他のサーバーやソフトウェアであなたの投稿が見つからないようにする設定が可能です。ただしリスクは伴います。
+    stop_deliver_hint_html: Re:nedonの投稿を、他のソフトウェアでは自由に検索することができます。Re:nedon内で行ったプライバシーの設定は無視され、あなたの投稿が意図しない人に見つかるおそれがあります。ここでは、他のサーバーやソフトウェアであなたの投稿が見つからないようにする設定が可能です。ただしリスクは伴います。
     title: プライバシー追加設定
   privacy_policy:
     title: プライバシーポリシー
@@ -1726,7 +1726,7 @@ ja:
       weibo: Weibo
     current_session: 現在のセッション
     description: "%{platform}上の%{browser}"
-    explanation: あなたのMastodonアカウントに現在ログインしているウェブブラウザの一覧です。
+    explanation: あなたのRe:nedonアカウントに現在ログインしているウェブブラウザの一覧です。
     ip: IP
     platforms:
       adobe_air: Adobe Air
@@ -1752,7 +1752,7 @@ ja:
     aliases: アカウントエイリアス
     appearance: 外観
     authorized_apps: 認証済みアプリ
-    back: Mastodonに戻る
+    back: Re:nedonに戻る
     delete: アカウントの削除
     development: 開発
     edit_profile: プロフィールを編集
@@ -1919,7 +1919,7 @@ ja:
       subject: '%{date}の申し立てが拒否されました'
       title: 却下された抗議
     backup_ready:
-      explanation: Mastodonアカウントのアーカイブを受け付けました。今すぐダウンロードできます！
+      explanation: Re:nedonアカウントのアーカイブを受け付けました。今すぐダウンロードできます！
       subject: アーカイブの準備ができました
       title: アーカイブの取り出し
     suspicious_sign_in:
@@ -1971,7 +1971,7 @@ ja:
       final_step: 'さあ、始めましょう！ たとえフォロワーがまだいなくても、あなたの公開した投稿はローカルタイムラインやハッシュタグなどを通じて誰かの目にとまるはずです。自己紹介をしたいときには #introductions ハッシュタグが便利かもしれません。'
       full_handle: あなたの正式なユーザーID
       full_handle_hint: 別のサーバーの友達とフォローやメッセージをやり取りする際には、これを伝えることになります。
-      subject: Mastodonへようこそ
+      subject: Re:nedonへようこそ
       title: ようこそ、%{name}さん！
   users:
     follow_limit_reached: あなたは現在 %{limit}人以上フォローできません
@@ -1983,7 +1983,7 @@ ja:
   verification:
     extra_instructions_html: <strong>ワンポイント:</strong> webサイト上のプロフィールへのリンクは表示上見えなくてもかまいません。重要な部分は <code>rel="me"</code> で、これはユーザーが自由にリンクを作成可能なサイトを悪用してなりすまされるのを防ぐための情報です。<code>a</code> タグを配置する代わりに <code>link</code> タグをHTMLヘッダーに挿入することでも認証が可能です。ただし、HTMLにはJavaScriptを使わなくてもアクセスできるようにしてください。
     here_is_how: 認証方法
-    hint_html: "<strong>Mastodonの本人認証はすべてのユーザーが自由に利用できます。</strong>この機能はweb標準に基づいており、将来にわたり無料です。必要なものは自分のものと認知されている個人サイトだけです。プロフィールからwebサイトにリンクし、webサイトからもプロフィールへ相互にリンクすると、Mastodonがそれを検証し、認証済みであることを表示します。"
+    hint_html: "<strong>Re:nedonの本人認証はすべてのユーザーが自由に利用できます。</strong>この機能はweb標準に基づいており、将来にわたり無料です。必要なものは自分のものと認知されている個人サイトだけです。プロフィールからwebサイトにリンクし、webサイトからもプロフィールへ相互にリンクすると、Re:nedonがそれを検証し、認証済みであることを表示します。"
     instructions_html: 以下のコードをコピーしてwebサイトのHTMLに貼り付けます。次に「プロフィールを編集」タブから、「プロフィール補足情報」のいずれかの欄にwebサイトのURLを記入し、「変更を保存」をクリックしてください。
     verification: 認証
     verified_links: 確認済みリンク
