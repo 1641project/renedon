@@ -5,15 +5,15 @@ module Mastodon
     module_function
 
     def kmyblue_major
-      5
+      1
     end
 
     def kmyblue_minor
-      4
+      0
     end
 
     def kmyblue_flag
-      'LTS'
+      'Dev_1'
     end
 
     def major
@@ -70,7 +70,7 @@ module Mastodon
     end
 
     def repository
-      ENV.fetch('GITHUB_REPOSITORY', 'kmycode/mastodon')
+      ENV.fetch('GITHUB_REPOSITORY', '1641project/renedon')
     end
 
     def source_base_url
