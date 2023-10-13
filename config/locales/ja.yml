@@ -1883,6 +1883,7 @@ ja:
     default: Mastodon (ダーク)
     full-dark: フルダーク
     mastodon-light: Mastodon (ライト)
+    bird: Bird UI
   time:
     formats:
       default: "%Y年%m月%d日 %H:%M"
