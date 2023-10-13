@@ -11,7 +11,7 @@ class NodeInfo::Serializer < ActiveModel::Serializer
   end
 
   def software
-    { name: 'Re:nedon', version: Mastodon::Version.to_s }
+    { name: 'renedon', version: Mastodon::Version.to_s }
   end
 
   def services
