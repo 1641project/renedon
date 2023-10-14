@@ -426,6 +426,8 @@ en:
       public_comment_hint: Comment about this domain limitation for the general public, if advertising the list of domain limitations is enabled.
       reject_favourite: Reject favorites
       reject_favourite_hint: Reject favorites or emoji-reaction in the future
+      reject_friend: Reject friend server applications
+      reject_friend_hint: Reject friend server application in the future
       reject_hashtag: Reject hashtags
       reject_hashtag_hint: Reject hashtags in the future
       reject_media: Reject media files
@@ -497,6 +499,38 @@ en:
       suppressed: Suppressed
       title: Follow recommendations
       unsuppress: Restore follow recommendation
+    friend_servers:
+      accept: Accept
+      add_new: Add and make a new application
+      delete: Delete
+      description_html: <strong>フレンドサーバー</strong>とは、お互いのローカル公開・ローカル検索許可の投稿をそのまま交換するシステムです。
+      disabled: Disabled
+      domain: Domain
+      edit:
+        allow_all_posts: Receive all posts
+        allow_all_posts_hint: 通常は自分のサーバーの誰もフォローしていないアカウントの投稿は例外を除き受け入れがブロックされます。そのブロックを解除します。スパムが発生した場合など、いつでもブロックを再開できます。
+        available: Available
+        delivery_local: Deliver without changing public unlisted visibility and searchability
+        delivery_local_hint: Public unlisted posts will be added the friend's global timeline
+        description: フレンドサーバーは、登録と同時に相手方のサーバーへ申請されます。
+        domain: Domain
+        inbox_url: Friend server inbox URL
+        inbox_url_hint: Default value is https://domain/inbox if you input empty (For example, https://example.com/inbox)
+        pseudo_relay: Send all public or searchable posts
+        pseudo_relay_hint: お互いに有効で、かつ相手側で「このサーバーからの投稿を無条件で受け入れる」が有効になっている必要があります
+        unlocked: Approve automatically receiving new request
+      edit_friend: Edit
+      enabled: Enabled
+      follow: Request
+      pending: Pending
+      pending_you: Your review requested
+      reject: Reject
+      save_and_enable: Save and enable
+      setup: Add and make a new application
+      signatures_not_enabled: セキュアモードまたは連合制限モードが有効の場合、フレンドサーバーの動作を確認していないため正常に動作しない可能性があります
+      status: Status
+      title: Friend server
+      unfollow: Cancel request
     instances:
       availability:
         description_html:
@@ -520,6 +554,7 @@ en:
         limited_federation_mode_description_html: You can chose whether to allow federation with this domain.
         policies:
           reject_favourite: Reject favorite
+          reject_friend: Reject friend server application
           reject_hashtag: Reject hashtags
           reject_media: Reject media
           reject_new_follow: Reject follows
@@ -810,6 +845,7 @@ en:
       discovery:
         emoji_reactions: Stamp
         follow_recommendations: Follow recommendations
+        friend_servers: Friend servers
         preamble: Surfacing interesting content is instrumental in onboarding new users who may not know anyone Mastodon. Control how various discovery features work on your server.
         profile_directory: Profile directory
         public_timelines: Public timelines
@@ -817,6 +853,7 @@ en:
         publish_statistics: Publish statistics
         title: Discovery
         trends: Trends
+        visibilities: Visibilities
       domain_blocks:
         all: To everyone
         disabled: To no one
@@ -1049,6 +1086,9 @@ en:
     new_pending_account:
       body: The details of the new account are below. You can approve or reject this application.
       subject: New account up for review on %{instance} (%{username})
+    new_pending_friend_server:
+      body: The new friend server %{domain} is waiting for your review. You can approve or reject this application.
+      subject: New friend server up for review on %{instance} (%{domain})
     new_report:
       body: "%{reporter} has reported %{target}"
       body_remote: Someone from %{domain} has reported %{target}
@@ -1835,6 +1875,8 @@ en:
       public: Public
       public_long: Anyone can find
       public_search_long: You can search all posts permitted to search
+      public_unlisted: Local and followers
+      public_unlisted_long: Local users and followers can find
     show_more: Show more
     show_newer: Show newer
     show_older: Show older

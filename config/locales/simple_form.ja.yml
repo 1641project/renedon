@@ -81,7 +81,7 @@ ja:
         setting_link_preview: プレビュー生成を停止することは、センシティブなサイトへのリンクを頻繁に投稿する人にも有効かもしれません
         setting_noai: AI学習への利用を禁止するメタタグをプロフィールページに追加します。ただし実効性があるとは限りません
         setting_public_post_to_unlisted: 未対応のサードパーティアプリからもローカル公開で投稿できますが、公開投稿はWeb以外できなくなります
-        setting_reject_unlisted_subscription: Misskeyやそのフォーク(Calckeyなど)は、フォローしていないアカウントの「未収載」投稿を **購読・検索** することができます。これはkmyblueの挙動と異なります。そのようなサーバーに、指定した公開範囲の投稿を「フォロワーのみ」として配送します。ただし構造上、完璧な対応は困難でたまに未収載として配信されること、ご理解ください
+        setting_reject_unlisted_subscription: Misskeyやそのフォークは、フォローしていないアカウントの「未収載」投稿を **購読・検索** することができます。これはkmyblueの挙動と異なります。そのようなサーバーに、指定した公開範囲の投稿を「フォロワーのみ」として配送します。ただし構造上、完璧な対応は困難でたまに未収載として配信されること、ご理解ください
         setting_show_application: 投稿するのに使用したアプリが投稿の詳細ビューに表示されるようになります
         setting_single_ref_to_quote: 当サーバーがまだ対象投稿を取り込んでいない場合、引用が相手に正常に認識されない場合があります
         setting_stop_emoji_reaction_streaming: 通信容量の節約に役立ちます
@@ -100,6 +100,7 @@ ja:
       filters:
         action: 投稿がフィルタに一致したときに実行するアクションを選択
         actions:
+          half_warn: フィルターに一致した投稿の本文のみを非表示にし、フィルターのタイトルを含む警告を表示します
           hide: フィルタに一致した投稿を完全に非表示にします
           warn: フィルタに一致した投稿を非表示にし、フィルタのタイトルを含む警告を表示します
       form_admin_settings:
@@ -109,6 +110,7 @@ ja:
         closed_registrations_message: アカウント作成を停止している時に表示されます
         content_cache_retention_period: 指定した日数が経過した他のサーバーの投稿とブーストを削除します。削除された投稿は再取得できない場合があります。削除された投稿についたブックマークやお気に入り、ブーストも失われ、元に戻せません。
         custom_css: ウェブ版のRe:nedonでカスタムスタイルを適用できます。
+        enable_public_unlisted_visibility: 有効にするとあなたのコミュニティは閉鎖的になるかもしれません。この設定はkmyblueの主要機能の1つであり、無効にする場合は概要などに記載することを強くおすすめします。
         mascot: 上級者向けWebインターフェースのイラストを上書きします。
         media_cache_retention_period: 正の値に設定されている場合、ダウンロードされたメディアファイルは指定された日数の後に削除され、リクエストに応じて再ダウンロードされます。
         peers_api_enabled: このサーバーが Fediverse で遭遇したドメイン名のリストです。このサーバーが知っているだけで、特定のサーバーと連合しているかのデータは含まれません。これは一般的に Fediverse に関する統計情報を収集するサービスによって使用されます。
@@ -238,6 +240,7 @@ ja:
         phrase: キーワードまたはフレーズ
         setting_advanced_layout: 上級者向けUIを有効にする
         setting_aggregate_reblogs: ブーストをまとめる
+        setting_allow_quote: 引用を許可する
         setting_always_send_emails: 常にメール通知を送信する
         setting_auto_play_gif: アニメーションGIFを自動再生する
         setting_bio_markdown: プロフィールのMarkdownを有効にする
@@ -272,6 +275,7 @@ ja:
         setting_emoji_reaction_streaming_notify_impl2: Nyastodon, Catstodon, glitch-soc互換のスタンプ機能を有効にする
         setting_enable_emoji_reaction: スタンプ機能を使用する
         setting_expand_spoilers: 閲覧注意としてマークされた投稿を常に展開する
+        setting_hide_blocking_quote: ブロックしたユーザーの投稿を引用した投稿を隠す
         setting_hide_followers_count: フォロワー数を隠す
         setting_hide_following_count: フォロー数を隠す
         setting_hide_network: 繋がりを隠す
@@ -279,12 +283,14 @@ ja:
         setting_hide_statuses_count: 投稿数を隠す
         setting_link_preview: リンクのプレビューを生成する
         setting_lock_follow_from_bot: botからのフォローを承認制にする
+        setting_show_quote_in_home: ホーム・リスト・アンテナなどで引用を表示する
+        setting_show_quote_in_public: 公開タイムライン（ローカル・連合）で引用を表示する
         setting_stay_privacy: 投稿時に公開範囲を保存する
         setting_noai: 自分のコンテンツのAI学習利用に対して不快感を表明する
         setting_public_post_to_unlisted: サードパーティから公開範囲「公開」で投稿した場合、「ローカル公開」に変更する
         setting_reduce_motion: アニメーションの動きを減らす
-        setting_reject_public_unlisted_subscription: Misskey系サーバーに「ローカル公開」投稿を「フォロワーのみ」に変換して配送する
-        setting_reject_unlisted_subscription: Misskey系サーバーに「未収載」投稿を「フォロワーのみ」に変換して配送する
+        setting_reject_public_unlisted_subscription: Misskey系サーバーに「ローカル公開」かつ検索許可「誰でも以外」の投稿を「フォロワーのみ」に変換して配送する
+        setting_reject_unlisted_subscription: Misskey系サーバーに「未収載」かつ検索許可「誰でも以外」の投稿を「フォロワーのみ」に変換して配送する
         setting_send_without_domain_blocks: 管理人の設定した配送停止設定を拒否する (非推奨)
         setting_show_application: 送信したアプリを開示する
         setting_show_emoji_reaction_on_timeline: タイムライン上に他の人のつけたスタンプを表示する
@@ -322,11 +328,13 @@ ja:
         name: ハッシュタグ
       filters:
         actions:
+          half_warn: アカウント名だけを出し、本文は警告で隠す
           hide: 完全に隠す
           warn: 警告付きで隠す
         options:
           exclude_follows: フォロー中のユーザーをフィルターの対象にしない
           exclude_localusers: ローカルユーザーをフィルターの対象にしない
+          with_quote: 引用・参照の内容をフィルターの対象に含める
       form_admin_settings:
         activity_api_enabled: APIでユーザーアクティビティに関する集計統計を公開する
         backups_retention_period: ユーザーアーカイブの保持期間
@@ -336,6 +344,7 @@ ja:
         content_cache_retention_period: コンテンツキャッシュの保持期間
         custom_css: カスタムCSS
         enable_emoji_reaction: スタンプ機能を有効にする
+        enable_public_unlisted_visibility: 公開範囲「ローカル公開」を有効にする
         mascot: カスタムマスコット（レガシー）
         media_cache_retention_period: メディアキャッシュの保持期間
         peers_api_enabled: 発見したサーバーのリストをAPIで公開する
@@ -360,6 +369,7 @@ ja:
         trendable_by_default: 審査前のトレンドの掲載を許可する
         trends: トレンドを有効にする
         trends_as_landing_page: 新規登録画面にトレンドを表示する
+        unlocked_friend: 全てのフレンドサーバー申請を自動承認する
       interactions:
         must_be_follower: フォロワー以外からの通知をブロック
         must_be_following: フォローしていないユーザーからの通知をブロック
@@ -384,6 +394,7 @@ ja:
         follow_request: フォローリクエストを受けた時
         mention: 返信が来た時
         pending_account: 新しいアカウントの承認が必要な時
+        pending_friend_server: 新しいフレンドサーバーの承認が必要な時
         reblog: 投稿がブーストされた時
         report: 新しい通報が送信された時
         software_updates:

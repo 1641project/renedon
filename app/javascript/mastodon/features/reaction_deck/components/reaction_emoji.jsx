@@ -59,7 +59,7 @@ class ReactionEmoji extends ImmutablePureComponent {
       const html = { __html: emojify(emoji) };
       content = (
         <span dangerouslySetInnerHTML={html} />
-      )
+      );
     }
 
     return (

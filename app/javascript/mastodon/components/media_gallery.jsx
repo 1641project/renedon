@@ -236,6 +236,7 @@ class MediaGallery extends PureComponent {
     visible: PropTypes.bool,
     autoplay: PropTypes.bool,
     onToggleVisibility: PropTypes.func,
+    compact: PropTypes.bool,
   };
 
   state = {
@@ -306,7 +307,7 @@ class MediaGallery extends PureComponent {
   }
 
   render () {
-    const { media, lang, intl, sensitive, defaultWidth, autoplay } = this.props;
+    const { media, lang, intl, sensitive, defaultWidth, autoplay, compact } = this.props;
     const { visible } = this.state;
     const width = this.state.width || defaultWidth;
 
@@ -355,13 +356,14 @@ class MediaGallery extends PureComponent {
 
     const rowClass = (size === 5 || size === 6 || size === 9 || size === 10 || size === 11 || size === 12) ? 'media-gallery--row3' :
       (size === 7 || size === 8 || size === 13 || size === 14 || size === 15 || size === 16) ? 'media-gallery--row4' :
-      'media-gallery--row2';
+        'media-gallery--row2';
     const columnClass = (size === 9) ? 'media-gallery--column3' :
       (size === 10 || size === 11 || size === 12 || size === 13 || size === 14 || size === 15 || size === 16) ? 'media-gallery--column4' :
-      'media-gallery--column2';
+        'media-gallery--column2';
+    const compactClass = compact ? 'media-gallery__compact' : null;
 
     return (
-      <div className={classNames('media-gallery', rowClass, columnClass)} style={style} ref={this.handleRef}>
+      <div className={classNames('media-gallery', rowClass, columnClass, compactClass)} style={style} ref={this.handleRef}>
         <div className={classNames('spoiler-button', { 'spoiler-button--minified': visible && !uncached, 'spoiler-button--click-thru': uncached })}>
           {spoilerButton}
         </div>

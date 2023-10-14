@@ -10,7 +10,7 @@ class ActivityPub::ProcessStatusUpdateService < BaseService
 
     @activity_json             = activity_json
     @json                      = object_json
-    @status_parser             = ActivityPub::Parser::StatusParser.new(@json)
+    @status_parser             = ActivityPub::Parser::StatusParser.new(@json, account: status.account)
     @uri                       = @status_parser.uri
     @status                    = status
     @account                   = status.account
@@ -259,9 +259,8 @@ class ActivityPub::ProcessStatusUpdateService < BaseService
   def update_references!
     references = @json['references'].nil? ? [] : ActivityPub::FetchReferencesService.new.call(@status, @json['references'])
     quote = @json['quote'] || @json['quoteUrl'] || @json['quoteURL'] || @json['_misskey_quote']
-    references << quote if quote
 
-    ProcessReferencesService.perform_worker_async(@status, [], references)
+    ProcessReferencesService.call_service_without_error(@status, [], references, [quote].compact)
   end
 
   def expected_type?

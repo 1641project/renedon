@@ -167,7 +167,7 @@ class AntennaSetting extends PureComponent {
 
   handleEditAntennaClick = () => {
     window.open(`/antennas/${this.props.params.id}/edit`, '_blank');
-  }
+  };
 
   handleDeleteClick = () => {
     const { dispatch, columnId, intl } = this.props;
@@ -193,7 +193,7 @@ class AntennaSetting extends PureComponent {
 
   handleTimelineClick = () => {
     this.context.router.history.push(`/antennast/${this.props.params.id}`);
-  }
+  };
 
   onStlToggle = ({ target }) => {
     const { dispatch } = this.props;
@@ -336,7 +336,7 @@ class AntennaSetting extends PureComponent {
             </label>
           </div>
         </>
-      )
+      );
     }
 
     let stlAlert;
@@ -369,7 +369,7 @@ class AntennaSetting extends PureComponent {
     const contentRadioAlert = antenna.get(contentRadioValue.get('value') === 'tags' ? 'keywords_count' : 'tags_count') > 0;
 
     const listOptions = lists.toArray().filter((list) => list.length >= 2 && list[1]).map((list) => {
-      return { value: list[1].get('id'), label: list[1].get('title') }
+      return { value: list[1].get('id'), label: list[1].get('title') };
     });
 
     return (
@@ -470,7 +470,7 @@ class AntennaSetting extends PureComponent {
                   icon='sitemap'
                   label={intl.formatMessage(messages.addDomainLabel)}
                   title={intl.formatMessage(messages.addDomainTitle)}
-                  />
+                />
               )}
 
               {rangeRadioAlert && <div className='alert'><FormattedMessage id='antennas.warnings.range_radio' defaultMessage='Simultaneous account and domain designation is not recommended.' /></div>}
@@ -487,7 +487,7 @@ class AntennaSetting extends PureComponent {
                   icon='hashtag'
                   label={intl.formatMessage(messages.addTagLabel)}
                   title={intl.formatMessage(messages.addTagTitle)}
-                  />
+                />
               )}
 
               {contentRadioValue.get('value') === 'keywords' && (
@@ -500,7 +500,7 @@ class AntennaSetting extends PureComponent {
                   icon='paragraph'
                   label={intl.formatMessage(messages.addKeywordLabel)}
                   title={intl.formatMessage(messages.addKeywordTitle)}
-                  />
+                />
               )}
 
               {contentRadioAlert && <div className='alert'><FormattedMessage id='antennas.warnings.content_radio' defaultMessage='Simultaneous keyword and tag designation is not recommended.' /></div>}
@@ -518,7 +518,7 @@ class AntennaSetting extends PureComponent {
                 icon='sitemap'
                 label={intl.formatMessage(messages.addDomainLabel)}
                 title={intl.formatMessage(messages.addDomainTitle)}
-                />
+              />
               <h3><FormattedMessage id='antennas.exclude_keywords' defaultMessage='Exclude keywords' /></h3>
               <TextList
                 onChange={this.onExcludeKeywordNameChanged}
@@ -529,18 +529,18 @@ class AntennaSetting extends PureComponent {
                 icon='paragraph'
                 label={intl.formatMessage(messages.addKeywordLabel)}
                 title={intl.formatMessage(messages.addKeywordTitle)}
-                />
-                <h3><FormattedMessage id='antennas.exclude_tags' defaultMessage='Exclude tags' /></h3>
-                <TextList
-                  onChange={this.onExcludeTagNameChanged}
-                  onAdd={this.onExcludeTagAdd}
-                  onRemove={this.onExcludeTagRemove}
-                  value={this.state.excludeTagName}
-                  values={tags.get('exclude_tags') || ImmutableList()}
-                  icon='hashtag'
-                  label={intl.formatMessage(messages.addTagLabel)}
-                  title={intl.formatMessage(messages.addTagTitle)}
-                  />
+              />
+              <h3><FormattedMessage id='antennas.exclude_tags' defaultMessage='Exclude tags' /></h3>
+              <TextList
+                onChange={this.onExcludeTagNameChanged}
+                onAdd={this.onExcludeTagAdd}
+                onRemove={this.onExcludeTagRemove}
+                value={this.state.excludeTagName}
+                values={tags.get('exclude_tags') || ImmutableList()}
+                icon='hashtag'
+                label={intl.formatMessage(messages.addTagLabel)}
+                title={intl.formatMessage(messages.addTagTitle)}
+              />
             </>
           )}
         </div>

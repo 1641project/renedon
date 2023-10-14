@@ -24,6 +24,7 @@ const messages = defineMessages({
   edit: { id: 'status.edit', defaultMessage: 'Edit' },
   direct: { id: 'status.direct', defaultMessage: 'Privately mention @{name}' },
   mention: { id: 'status.mention', defaultMessage: 'Mention @{name}' },
+  mentions: { id: 'status.mentions', defaultMessage: 'Mentioned users' },
   mute: { id: 'account.mute', defaultMessage: 'Mute @{name}' },
   block: { id: 'account.block', defaultMessage: 'Block @{name}' },
   reply: { id: 'status.reply', defaultMessage: 'Reply' },
@@ -249,6 +250,10 @@ class StatusActionBar extends ImmutablePureComponent {
     this.context.router.history.push(`/@${this.props.status.getIn(['account', 'acct'])}/${this.props.status.get('id')}`);
   };
 
+  handleOpenMentions = () => {
+    this.context.router.history.push(`/@${this.props.status.getIn(['account', 'acct'])}/${this.props.status.get('id')}/mentioned_users`);
+  };
+
   handleEmbed = () => {
     this.props.onEmbed(this.props.status);
   };
@@ -293,6 +298,7 @@ class StatusActionBar extends ImmutablePureComponent {
     const account            = status.get('account');
     const writtenByMe        = status.getIn(['account', 'id']) === me;
     const isRemote           = status.getIn(['account', 'username']) !== status.getIn(['account', 'acct']);
+    const allowQuote         = status.getIn(['account', 'other_settings', 'allow_quote']);
 
     let menu = [];
 
@@ -315,7 +321,11 @@ class StatusActionBar extends ImmutablePureComponent {
     }
 
     if (signedIn) {
-      if (!simpleTimelineMenu) {
+      if (writtenByMe) {
+        menu.push({ text: intl.formatMessage(messages.mentions), action: this.handleOpenMentions });
+      }
+
+      if (!simpleTimelineMenu || writtenByMe) {
         menu.push(null);
       }
 
@@ -323,7 +333,10 @@ class StatusActionBar extends ImmutablePureComponent {
 
       if (publicStatus) {
         menu.push({ text: intl.formatMessage(messages.reference), action: this.handleReference });
-        menu.push({ text: intl.formatMessage(messages.quote), action: this.handleQuote });
+
+        if (allowQuote) {
+          menu.push({ text: intl.formatMessage(messages.quote), action: this.handleQuote });
+        }
       }
 
       menu.push({ text: intl.formatMessage(status.get('bookmarked') ? messages.removeBookmark : messages.bookmark), action: this.handleBookmarkClickOriginal });

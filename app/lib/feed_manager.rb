@@ -58,7 +58,7 @@ class FeedManager
   # @param [Boolean] update
   # @return [Boolean]
   def push_to_home(account, status, update: false)
-    return false unless add_to_feed(:home, account.id, status, aggregate_reblogs: account.user&.aggregates_reblogs?)
+    return false unless add_to_feed(:home, account.id, status, aggregate_reblogs: account.user&.aggregates_reblogs?, update: update)
 
     trim(:home, account.id)
     PushUpdateWorker.perform_async(account.id, status.id, "timeline:#{account.id}", { 'update' => update }) if push_update_required?("timeline:#{account.id}")
@@ -83,7 +83,7 @@ class FeedManager
   # @param [Boolean] update
   # @return [Boolean]
   def push_to_list(list, status, update: false)
-    return false if filter_from_list?(status, list) || !add_to_feed(:list, list.id, status, aggregate_reblogs: list.account.user&.aggregates_reblogs?)
+    return false if filter_from_list?(status, list) || !add_to_feed(:list, list.id, status, aggregate_reblogs: list.account.user&.aggregates_reblogs?, update: update)
 
     trim(:list, list.id)
     PushUpdateWorker.perform_async(list.account_id, status.id, "timeline:list:#{list.id}", { 'update' => update }) if push_update_required?("timeline:list:#{list.id}")
@@ -91,7 +91,7 @@ class FeedManager
   end
 
   def push_to_antenna(antenna, status, update: false)
-    return false unless add_to_feed(:antenna, antenna.id, status, aggregate_reblogs: antenna.account.user&.aggregates_reblogs?)
+    return false unless add_to_feed(:antenna, antenna.id, status, aggregate_reblogs: antenna.account.user&.aggregates_reblogs?, update: update)
 
     trim(:antenna, antenna.id)
     PushUpdateWorker.perform_async(antenna.account_id, status.id, "timeline:antenna:#{antenna.id}", { 'update' => update }) if push_update_required?("timeline:antenna:#{antenna.id}")
@@ -497,7 +497,9 @@ class FeedManager
   # @param [Status] status
   # @param [Boolean] aggregate_reblogs
   # @return [Boolean]
-  def add_to_feed(timeline_type, account_id, status, aggregate_reblogs: true)
+  def add_to_feed(timeline_type, account_id, status, aggregate_reblogs: true, update: false)
+    return true if update
+
     timeline_key = key(timeline_type, account_id)
     reblog_key   = key(timeline_type, account_id, 'reblogs')
 

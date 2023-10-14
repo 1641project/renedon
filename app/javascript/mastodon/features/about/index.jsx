@@ -28,6 +28,11 @@ const messages = defineMessages({
   silencedExplanation: { id: 'about.domain_blocks.silenced.explanation', defaultMessage: 'You will generally not see profiles and content from this server, unless you explicitly look it up or opt into it by following.' },
   suspended: { id: 'about.domain_blocks.suspended.title', defaultMessage: 'Suspended' },
   suspendedExplanation: { id: 'about.domain_blocks.suspended.explanation', defaultMessage: 'No data from this server will be processed, stored or exchanged, making any interaction or communication with users from this server impossible.' },
+  publicUnlistedVisibility: { id: 'privacy.public_unlisted.short', defaultMessage: 'Public unlisted' },
+  emojiReaction: { id: 'status.emoji_reaction', defaultMessage: 'Stamp' },
+  enabled: { id: 'about.enabled', defaultMessage: 'Enabled' },
+  disabled: { id: 'about.disabled', defaultMessage: 'Disabled' },
+  capabilities: { id: 'about.kmyblue_capabilities', defaultMessage: 'kmyblue capabilities' },
 });
 
 const severityMessages = {
@@ -122,6 +127,10 @@ class About extends PureComponent {
     const { multiColumn, intl, server, extendedDescription, domainBlocks } = this.props;
     const isLoading = server.get('isLoading');
 
+    const fedibirdCapabilities = server.get('fedibird_capabilities');
+    const isPublicUnlistedVisibility = fedibirdCapabilities.includes('kmyblue_visibility_public_unlisted');
+    const isEmojiReaction = fedibirdCapabilities.includes('emoji_reaction');
+
     return (
       <Column bindToDocument={!multiColumn} label={intl.formatMessage(messages.title)}>
         <div className='scrollable about'>
@@ -180,6 +189,20 @@ class About extends PureComponent {
                 ))}
               </ol>
             ))}
+          </Section>
+
+          <Section title={intl.formatMessage(messages.capabilities)}>
+            <p><FormattedMessage id='about.kmyblue_capability' defaultMessage='This server is using kmyblue, a fork of Mastodon. On this server, kmyblues unique features are configured as follows.' /></p>
+            {!isLoading && (
+              <ol className='rules-list'>
+                <li>
+                  <span className='rules-list__text'>{intl.formatMessage(messages.emojiReaction)}: {intl.formatMessage(isEmojiReaction ? messages.enabled : messages.disabled)}</span>
+                </li>
+                <li>
+                  <span className='rules-list__text'>{intl.formatMessage(messages.publicUnlistedVisibility)}: {intl.formatMessage(isPublicUnlistedVisibility ? messages.enabled : messages.disabled)}</span>
+                </li>
+              </ol>
+            )}
           </Section>
 
           <Section title={intl.formatMessage(messages.blocks)} onOpen={this.handleDomainBlocksOpen}>

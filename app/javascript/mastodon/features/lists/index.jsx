@@ -78,7 +78,7 @@ class Lists extends ImmutablePureComponent {
         >
           {lists.map(list =>
             (<ColumnLink key={list.get('id')} to={`/lists/${list.get('id')}`} icon='list-ul' text={list.get('title')}
-            badge={(list.get('antennas') && list.get('antennas').size > 0) ? intl.formatMessage(messages.with_antenna) : undefined} />),
+              badge={(list.get('antennas') && list.get('antennas').size > 0) ? intl.formatMessage(messages.with_antenna) : undefined} />),
           )}
         </ScrollableList>
 

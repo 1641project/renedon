@@ -72,12 +72,6 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
     as_array(@object['cc'] || @json['cc']).map { |x| value_or_id(x) }
   end
 
-  def audience_searchable_by
-    return nil if @object['searchableBy'].nil?
-
-    @audience_searchable_by = as_array(@object['searchableBy']).map { |x| value_or_id(x) }
-  end
-
   def process_status
     @tags                 = []
     @mentions             = []
@@ -99,9 +93,9 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
     resolve_thread(@status)
     fetch_replies(@status)
+    process_references!
     distribute
     forward_for_reply
-    process_references!
     join_group!
   end
 
@@ -120,7 +114,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
   end
 
   def process_status_params
-    @status_parser = ActivityPub::Parser::StatusParser.new(@json, followers_collection: @account.followers_url, object: @object)
+    @status_parser = ActivityPub::Parser::StatusParser.new(@json, followers_collection: @account.followers_url, object: @object, account: @account, friend_domain: friend_domain?)
 
     @params = {
       uri: @status_parser.uri,
@@ -136,7 +130,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
       sensitive: @account.sensitized? || @status_parser.sensitive || false,
       visibility: @status_parser.visibility,
       limited_scope: @status_parser.limited_scope,
-      searchability: searchability,
+      searchability: @status_parser.searchability,
       thread: replied_to_status,
       conversation: conversation_from_uri(@object['conversation']),
       media_attachment_ids: process_attachments.take(MediaAttachment::ACTIVITYPUB_STATUS_ATTACHMENT_MAX).map(&:id),
@@ -453,7 +447,7 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
   def related_to_local_activity?
     fetch? || followed_by_local_accounts? || requested_through_relay? ||
-      responds_to_followed_account? || addresses_local_accounts?
+      responds_to_followed_account? || addresses_local_accounts? || quote_local? || free_friend_domain?
   end
 
   def responds_to_followed_account?
@@ -494,103 +488,33 @@ class ActivityPub::Activity::Create < ActivityPub::Activity
 
   def process_references!
     references = @object['references'].nil? ? [] : ActivityPub::FetchReferencesService.new.call(@status, @object['references'])
-    quote = @object['quote'] || @object['quoteUrl'] || @object['quoteURL'] || @object['_misskey_quote']
-    references << quote if quote
 
-    ProcessReferencesService.perform_worker_async(@status, [], references)
+    ProcessReferencesService.call_service_without_error(@status, [], references, [quote].compact)
+  end
+
+  def quote_local?
+    url = quote
+
+    if url.present?
+      ResolveURLService.new.call(url, on_behalf_of: @account, local_only: true).present?
+    else
+      false
+    end
+  end
+
+  def free_friend_domain?
+    FriendDomain.free_receivings.exists?(domain: @account.domain)
+  end
+
+  def friend_domain?
+    FriendDomain.enabled.find_by(domain: @account.domain)&.accepted?
+  end
+
+  def quote
+    @quote ||= @object['quote'] || @object['quoteUrl'] || @object['quoteURL'] || @object['_misskey_quote']
   end
 
   def join_group!
     GroupReblogService.new.call(@status)
-  end
-
-  def searchability_from_audience
-    if audience_searchable_by.nil?
-      nil
-    elsif audience_searchable_by.any? { |uri| ActivityPub::TagManager.instance.public_collection?(uri) }
-      :public
-    elsif audience_searchable_by.include?('kmyblue:Limited') || audience_searchable_by.include?('as:Limited')
-      :limited
-    elsif audience_searchable_by.include?(@account.followers_url)
-      :private
-    else
-      :direct
-    end
-  end
-
-  SCAN_SEARCHABILITY_RE = /\[searchability:(public|followers|reactors|private)\]/
-  SCAN_SEARCHABILITY_FEDIBIRD_RE = /searchable_by_(all_users|followers_only|reacted_users_only|nobody)/
-
-  def searchability
-    from_audience = searchability_from_audience
-    return from_audience if from_audience
-    return nil if default_searchability_from_bio?
-
-    searchability_from_bio || (misskey_software? ? misskey_searchability : nil)
-  end
-
-  def default_searchability_from_bio?
-    note = @account.note
-    return false if note.blank?
-
-    note.include?('searchable_by_default_range')
-  end
-
-  def searchability_from_bio
-    note = @account.note
-    return nil if note.blank?
-
-    searchability_bio = note.scan(SCAN_SEARCHABILITY_FEDIBIRD_RE).first || note.scan(SCAN_SEARCHABILITY_RE).first
-    return nil unless searchability_bio
-
-    searchability = searchability_bio[0]
-    return nil if searchability.nil?
-
-    searchability = :public  if %w(public all_users).include?(searchability)
-    searchability = :private if %w(followers followers_only).include?(searchability)
-    searchability = :direct  if %w(reactors reacted_users_only).include?(searchability)
-    searchability = :limited if %w(private nobody).include?(searchability)
-
-    searchability
-  end
-
-  def instance_info
-    @instance_info ||= InstanceInfo.find_by(domain: @account.domain)
-  end
-
-  def misskey_software?
-    info = instance_info
-    return false if info.nil?
-
-    %w(misskey calckey).include?(info.software)
-  end
-
-  def misskey_searchability
-    visibility = visibility_from_audience
-    %i(public unlisted).include?(visibility) ? :public : :limited
-  end
-
-  def visibility_from_audience
-    if audience_to.any? { |to| ActivityPub::TagManager.instance.public_collection?(to) }
-      :public
-    elsif audience_cc.any? { |cc| ActivityPub::TagManager.instance.public_collection?(cc) }
-      :unlisted
-    elsif audience_to.include?('kmyblue:LoginOnly') || audience_to.include?('as:LoginOnly') || audience_to.include?('LoginUser')
-      :login
-    elsif audience_to.include?(@account.followers_url)
-      :private
-    else
-      :direct
-    end
-  end
-
-  def visibility_from_audience_with_silence
-    visibility = visibility_from_audience
-
-    if @account.silenced? && %i(public).include?(visibility)
-      :unlisted
-    else
-      visibility
-    end
   end
 end

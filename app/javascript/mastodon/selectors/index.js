@@ -3,7 +3,7 @@ import { createSelector } from 'reselect';
 
 import { toServerSideType } from 'mastodon/utils/filters';
 
-import { me } from '../initial_state';
+import { me, hideBlockingQuote } from '../initial_state';
 
 const getAccountBase         = (state, id) => state.getIn(['accounts', id], null);
 const getAccountCounters     = (state, id) => state.getIn(['accounts_counters', id], null);
@@ -37,38 +37,57 @@ export const makeGetStatus = () => {
     [
       (state, { id }) => state.getIn(['statuses', id]),
       (state, { id }) => state.getIn(['statuses', state.getIn(['statuses', id, 'reblog'])]),
+      (state, { id }) => state.getIn(['statuses', state.getIn(['statuses', id, 'quote_id'])]),
+      (state, { id }) => state.getIn(['statuses', state.getIn(['statuses', state.getIn(['statuses', id, 'reblog']), 'quote_id'])]),
       (state, { id }) => state.getIn(['accounts', state.getIn(['statuses', id, 'account'])]),
       (state, { id }) => state.getIn(['accounts', state.getIn(['statuses', state.getIn(['statuses', id, 'reblog']), 'account'])]),
       getFilters,
     ],
 
-    (statusBase, statusReblog, accountBase, accountReblog, filters) => {
+    (statusBase, statusReblog, statusQuote, statusReblogQuote, accountBase, accountReblog, filters) => {
       if (!statusBase || statusBase.get('isLoading')) {
         return null;
       }
 
       if (statusReblog) {
         statusReblog = statusReblog.set('account', accountReblog);
+        statusQuote = statusReblogQuote;
       } else {
         statusReblog = null;
       }
 
+      if (hideBlockingQuote && (statusReblog || statusBase).getIn(['quote', 'quote_muted'])) {
+        return null;
+      }
+
       let filtered = false;
+      let filterAction = 'warn';
       if ((accountReblog || accountBase).get('id') !== me && filters) {
         let filterResults = statusReblog?.get('filtered') || statusBase.get('filtered') || ImmutableList();
+        const quoteFilterResults = statusQuote?.get('filtered');
+        if (quoteFilterResults) {
+          const filterWithQuote = quoteFilterResults.some((result) => filters.getIn([result.get('filter'), 'with_quote']));
+          if (filterWithQuote) {
+            filterResults = filterResults.concat(quoteFilterResults);
+          }
+        }
+
         if (filterResults.some((result) => filters.getIn([result.get('filter'), 'filter_action']) === 'hide')) {
           return null;
         }
         filterResults = filterResults.filter(result => filters.has(result.get('filter')));
         if (!filterResults.isEmpty()) {
           filtered = filterResults.map(result => filters.getIn([result.get('filter'), 'title']));
+          filterAction = filterResults.some((result) => filters.getIn([result.get('filter'), 'filter_action']) === 'warn') ? 'warn' : 'half_warn';
         }
       }
 
       return statusBase.withMutations(map => {
         map.set('reblog', statusReblog);
+        map.set('quote', statusQuote);
         map.set('account', accountBase);
         map.set('matched_filters', filtered);
+        map.set('filter_action', filterAction);
       });
     },
   );
@@ -134,4 +153,8 @@ export const getStatusList = createSelector([
 
 export const getBookmarkCategoryStatusList = createSelector([
   (state, bookmarkCategoryId) => state.getIn(['bookmark_categories', bookmarkCategoryId, 'items']),
+], (items) => items ? items.toList() : ImmutableList());
+
+export const getCircleStatusList = createSelector([
+  (state, circleId) => state.getIn(['circles', circleId, 'statuses', 'items']),
 ], (items) => items ? items.toList() : ImmutableList());

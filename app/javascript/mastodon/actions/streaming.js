@@ -192,4 +192,4 @@ export const connectListStream = listId =>
  * @returns {function(): void}
  */
 export const connectAntennaStream = antennaId =>
-connectTimelineStream(`antenna:${antennaId}`, 'antenna', { antenna: antennaId }, { fillGaps: () => fillAntennaTimelineGaps(antennaId) });
+  connectTimelineStream(`antenna:${antennaId}`, 'antenna', { antenna: antennaId }, { fillGaps: () => fillAntennaTimelineGaps(antennaId) });

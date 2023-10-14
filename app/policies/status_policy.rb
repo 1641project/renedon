@@ -24,6 +24,10 @@ class StatusPolicy < ApplicationPolicy
     end
   end
 
+  def show_mentioned_users?
+    owned?
+  end
+
   def reblog?
     !requires_mention? && (!private? || owned?) && show? && !blocking_author?
   end
@@ -34,6 +38,10 @@ class StatusPolicy < ApplicationPolicy
 
   def emoji_reaction?
     show? && !blocking_author?
+  end
+
+  def quote?
+    %i(public public_unlisted unlisted).include?(record.visibility.to_sym) && show? && !blocking_author?
   end
 
   def destroy?

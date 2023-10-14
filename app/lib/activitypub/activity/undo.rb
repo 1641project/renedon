@@ -87,6 +87,8 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
   end
 
   def undo_follow
+    return remove_follow_from_friend if friend_follow?
+
     target_account = account_from_uri(target_uri)
 
     return if target_account.nil? || !target_account.local?
@@ -98,6 +100,18 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
     else
       delete_later!(object_uri)
     end
+  end
+
+  def remove_follow_from_friend
+    friend.destroy_without_signal!
+  end
+
+  def friend
+    @friend ||= FriendDomain.find_by(domain: @account.domain) if @account.domain.present? && @object['object'] == ActivityPub::TagManager::COLLECTIONS[:public]
+  end
+
+  def friend_follow?
+    friend.present?
   end
 
   def undo_like_original
@@ -132,6 +146,7 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
         if @original_status.account.local?
           forward_for_undo_emoji_reaction
           relay_for_undo_emoji_reaction
+          relay_friend_for_undo_emoji_reaction
         end
       end
     else
@@ -166,6 +181,14 @@ class ActivityPub::Activity::Undo < ActivityPub::Activity
     return unless @json['signature'].present? && @original_status.public_visibility?
 
     ActivityPub::DeliveryWorker.push_bulk(Relay.enabled.pluck(:inbox_url)) do |inbox_url|
+      [Oj.dump(@json), @original_status.account.id, inbox_url]
+    end
+  end
+
+  def relay_friend_for_undo_emoji_reaction
+    return unless @json['signature'].present? && @original_status.distributable_friend?
+
+    ActivityPub::DeliveryWorker.push_bulk(FriendDomain.distributables.pluck(:inbox_url)) do |inbox_url|
       [Oj.dump(@json), @original_status.account.id, inbox_url]
     end
   end

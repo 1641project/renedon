@@ -10,7 +10,7 @@ class StatusReachFinder
   end
 
   def inboxes
-    (reached_account_inboxes + followers_inboxes + relay_inboxes).uniq
+    (reached_account_inboxes + followers_inboxes + relay_inboxes + nolocal_friend_inboxes).uniq
   end
 
   def inboxes_for_misskey
@@ -19,6 +19,10 @@ class StatusReachFinder
     else
       (reached_account_inboxes_for_misskey + followers_inboxes_for_misskey).uniq
     end
+  end
+
+  def inboxes_for_friend
+    (reached_account_inboxes_for_friend + followers_inboxes_for_friend + friend_inboxes).uniq
   end
 
   private
@@ -32,7 +36,7 @@ class StatusReachFinder
     elsif @status.limited_visibility?
       Account.where(id: mentioned_account_ids).where.not(domain: banned_domains).inboxes
     else
-      Account.where(id: reached_account_ids).where.not(domain: banned_domains).inboxes
+      Account.where(id: reached_account_ids).where.not(domain: banned_domains + friend_domains).inboxes
     end
   end
 
@@ -42,7 +46,17 @@ class StatusReachFinder
     elsif @status.limited_visibility?
       Account.where(id: mentioned_account_ids).where(domain: banned_domains_for_misskey).inboxes
     else
-      Account.where(id: reached_account_ids).where(domain: banned_domains_for_misskey).inboxes
+      Account.where(id: reached_account_ids).where(domain: banned_domains_for_misskey - friend_domains).inboxes
+    end
+  end
+
+  def reached_account_inboxes_for_friend
+    if @status.reblog?
+      []
+    elsif @status.limited_visibility?
+      Account.where(id: mentioned_account_ids).where.not(domain: banned_domains).inboxes
+    else
+      Account.where(id: reached_account_ids, domain: friend_domains).where.not(domain: banned_domains - friend_domains).inboxes
     end
   end
 
@@ -54,6 +68,7 @@ class StatusReachFinder
       reblogs_account_ids,
       favourites_account_ids,
       replies_account_ids,
+      quoted_account_id,
     ].tap do |arr|
       arr.flatten!
       arr.compact!
@@ -88,23 +103,37 @@ class StatusReachFinder
     @status.replies.pluck(:account_id) if distributable? || unsafe?
   end
 
+  def quoted_account_id
+    @status.quote.account_id if @status.quote?
+  end
+
   def followers_inboxes
     if @status.in_reply_to_local_account? && distributable?
-      @status.account.followers.or(@status.thread.account.followers.not_domain_blocked_by_account(@status.account)).where.not(domain: banned_domains).inboxes
+      @status.account.followers.or(@status.thread.account.followers.not_domain_blocked_by_account(@status.account)).where.not(domain: banned_domains + friend_domains).inboxes
     elsif @status.direct_visibility? || @status.limited_visibility?
       []
     else
-      @status.account.followers.where.not(domain: banned_domains).inboxes
+      @status.account.followers.where.not(domain: banned_domains + friend_domains).inboxes
     end
   end
 
   def followers_inboxes_for_misskey
     if @status.in_reply_to_local_account? && distributable?
-      @status.account.followers.or(@status.thread.account.followers.not_domain_blocked_by_account(@status.account)).where(domain: banned_domains_for_misskey).inboxes
+      @status.account.followers.or(@status.thread.account.followers.not_domain_blocked_by_account(@status.account)).where(domain: banned_domains_for_misskey - friend_domains).inboxes
     elsif @status.direct_visibility? || @status.limited_visibility?
       []
     else
-      @status.account.followers.where(domain: banned_domains_for_misskey).inboxes
+      @status.account.followers.where(domain: banned_domains_for_misskey - friend_domains).inboxes
+    end
+  end
+
+  def followers_inboxes_for_friend
+    if @status.in_reply_to_local_account? && distributable?
+      @status.account.followers.or(@status.thread.account.followers.not_domain_blocked_by_account(@status.account)).where(domain: friend_domains).inboxes
+    elsif @status.direct_visibility? || @status.limited_visibility?
+      []
+    else
+      @status.account.followers.where(domain: friend_domains).inboxes
     end
   end
 
@@ -116,12 +145,35 @@ class StatusReachFinder
     end
   end
 
+  def friend_inboxes
+    if @status.public_visibility? || @status.public_unlisted_visibility? || (@status.unlisted_visibility? && (@status.public_searchability? || @status.public_unlisted_searchability?))
+      DeliveryFailureTracker.without_unavailable(FriendDomain.distributables.where(delivery_local: true).where.not(domain: AccountDomainBlock.where(account: @status.account).select(:domain)).pluck(:inbox_url))
+    else
+      []
+    end
+  end
+
+  def nolocal_friend_inboxes
+    if @status.public_visibility?
+      DeliveryFailureTracker.without_unavailable(FriendDomain.distributables.where(delivery_local: false).where.not(domain: AccountDomainBlock.where(account: @status.account).select(:domain)).pluck(:inbox_url))
+    else
+      []
+    end
+  end
+
   def distributable?
     @status.public_visibility? || @status.unlisted_visibility? || @status.public_unlisted_visibility?
   end
 
   def unsafe?
     @options[:unsafe]
+  end
+
+  def friend_domains
+    return @friend_domains if defined?(@friend_domains)
+
+    @friend_domains = FriendDomain.deliver_locals.pluck(:domain)
+    @friend_domains -= UnavailableDomain.where(domain: @friend_domains).pluck(:domain)
   end
 
   def banned_domains
@@ -157,9 +209,10 @@ class StatusReachFinder
   end
 
   def banned_domains_for_misskey_of_status(status)
+    return [] if status.public_searchability?
     return [] unless (status.public_unlisted_visibility? && status.account.user&.setting_reject_public_unlisted_subscription) || (status.unlisted_visibility? && status.account.user&.setting_reject_unlisted_subscription)
 
-    from_info = InstanceInfo.where(software: %w(misskey calckey)).pluck(:domain)
+    from_info = InstanceInfo.where(software: %w(misskey calckey cherrypick)).pluck(:domain)
     from_domain_block = DomainBlock.where(detect_invalid_subscription: true).pluck(:domain)
     (from_info + from_domain_block).uniq
   end

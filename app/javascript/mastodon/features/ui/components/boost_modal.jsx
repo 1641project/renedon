@@ -30,6 +30,7 @@ const messages = defineMessages({
   limited_short: { id: 'privacy.limited.short', defaultMessage: 'Limited menbers only' },
   mutual_short: { id: 'privacy.mutual.short', defaultMessage: 'Mutual followers only' },
   circle_short: { id: 'privacy.circle.short', defaultMessage: 'Circle members only' },
+  personal_short: { id: 'privacy.personal.short', defaultMessage: 'Yourself only' },
   direct_short: { id: 'privacy.direct.short', defaultMessage: 'Mentioned people only' },
 });
 
@@ -100,6 +101,7 @@ class BoostModal extends ImmutablePureComponent {
       'limited': { icon: 'get-pocket', text: intl.formatMessage(messages.limited_short) },
       'mutual': { icon: 'exchange', text: intl.formatMessage(messages.mutual_short) },
       'circle': { icon: 'user-circle', text: intl.formatMessage(messages.circle_short) },
+      'personal': { icon: 'sticky-note-o', text: intl.formatMessage(messages.personal_short) },
       'direct': { icon: 'at', text: intl.formatMessage(messages.direct_short) },
     };
 

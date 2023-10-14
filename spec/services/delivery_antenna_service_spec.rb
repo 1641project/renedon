@@ -295,6 +295,18 @@ RSpec.describe DeliveryAntennaService, type: :service do
       end
     end
 
+    context 'when public_unlisted searchability' do
+      let(:searchability) { :public_unlisted }
+
+      it 'detecting antenna' do
+        expect(antenna_feed_of(antenna)).to include status.id
+      end
+
+      it 'not detecting antenna' do
+        expect(antenna_feed_of(empty_antenna)).to_not include status.id
+      end
+    end
+
     context 'when private searchability' do
       let(:searchability) { :private }
 
@@ -311,6 +323,15 @@ RSpec.describe DeliveryAntennaService, type: :service do
     let(:visibility)     { :unlisted }
 
     context 'when public searchability' do
+      it 'detecting antenna' do
+        expect(antenna_feed_of(antenna)).to include status.id
+        expect(antenna_feed_of(empty_antenna)).to include status.id
+      end
+    end
+
+    context 'when public_unlisted searchability' do
+      let(:searchability) { :public_unlisted }
+
       it 'detecting antenna' do
         expect(antenna_feed_of(antenna)).to include status.id
         expect(antenna_feed_of(empty_antenna)).to include status.id

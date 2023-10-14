@@ -167,7 +167,13 @@ class UpdateStatusService < BaseService
 
   def update_metadata!
     ProcessHashtagsService.new.call(@status)
-    ProcessMentionsService.new.call(@status)
+    process_mentions_service.call(@status)
+
+    @status.update(limited_scope: :circle) if process_mentions_service.mentions?
+  end
+
+  def process_mentions_service
+    @process_mentions_service ||= ProcessMentionsService.new
   end
 
   def broadcast_updates!

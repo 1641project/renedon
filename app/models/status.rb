@@ -30,6 +30,7 @@
 #  searchability                :integer
 #  markdown                     :boolean          default(FALSE)
 #  limited_scope                :integer
+#  quote_of_id                  :bigint(8)
 #
 
 require 'ostruct'
@@ -58,7 +59,7 @@ class Status < ApplicationRecord
 
   enum visibility: { public: 0, unlisted: 1, private: 2, direct: 3, limited: 4, public_unlisted: 10, login: 11 }, _suffix: :visibility
   enum searchability: { public: 0, private: 1, direct: 2, limited: 3, unsupported: 4, public_unlisted: 10 }, _suffix: :searchability
-  enum limited_scope: { none: 0, mutual: 1, circle: 2 }, _suffix: :limited
+  enum limited_scope: { none: 0, mutual: 1, circle: 2, personal: 3 }, _suffix: :limited
 
   belongs_to :application, class_name: 'Doorkeeper::Application', optional: true
 
@@ -69,12 +70,14 @@ class Status < ApplicationRecord
 
   belongs_to :thread, foreign_key: 'in_reply_to_id', class_name: 'Status', inverse_of: :replies, optional: true
   belongs_to :reblog, foreign_key: 'reblog_of_id', class_name: 'Status', inverse_of: :reblogs, optional: true
+  belongs_to :quote, foreign_key: 'quote_of_id', class_name: 'Status', inverse_of: :quotes, optional: true
 
   has_many :favourites, inverse_of: :status, dependent: :destroy
   has_many :emoji_reactions, inverse_of: :status, dependent: :destroy
   has_many :bookmarks, inverse_of: :status, dependent: :destroy
   has_many :reblogs, foreign_key: 'reblog_of_id', class_name: 'Status', inverse_of: :reblog, dependent: :destroy
   has_many :reblogged_by_accounts, through: :reblogs, class_name: 'Account', source: :account
+  has_many :quotes, foreign_key: 'quote_of_id', class_name: 'Status', inverse_of: :quote
   has_many :replies, foreign_key: 'in_reply_to_id', class_name: 'Status', inverse_of: :thread
   has_many :mentions, dependent: :destroy, inverse_of: :status
   has_many :mentioned_accounts, through: :mentions, source: :account, class_name: 'Account'
@@ -106,6 +109,7 @@ class Status < ApplicationRecord
   has_one :poll, inverse_of: :status, dependent: :destroy
   has_one :trend, class_name: 'StatusTrend', inverse_of: :status
   has_one :scheduled_expiration_status, inverse_of: :status, dependent: :destroy
+  has_one :circle_status, inverse_of: :status, dependent: :destroy
 
   validates :uri, uniqueness: true, presence: true, unless: :local?
   validates :text, presence: true, unless: -> { with_media? || reblog? }
@@ -125,8 +129,7 @@ class Status < ApplicationRecord
   scope :without_replies, -> { where('statuses.reply = FALSE OR statuses.in_reply_to_account_id = statuses.account_id') }
   scope :without_reblogs, -> { where(statuses: { reblog_of_id: nil }) }
   scope :with_public_visibility, -> { where(visibility: [:public, :public_unlisted, :login]) }
-  scope :with_public_search_visibility, -> { merge(where(visibility: [:public, :public_unlisted, :login]).or(Status.where(searchability: :public))) }
-  scope :with_global_timeline_visibility, -> { where(visibility: [:public, :login]) }
+  scope :with_public_search_visibility, -> { merge(where(visibility: [:public, :public_unlisted, :login]).or(Status.where(searchability: [:public, :public_unlisted]))) }
   scope :tagged_with, ->(tag_ids) { joins(:statuses_tags).where(statuses_tags: { tag_id: tag_ids }) }
   scope :excluding_silenced_accounts, -> { left_outer_joins(:account).where(accounts: { silenced_at: nil }) }
   scope :including_silenced_accounts, -> { left_outer_joins(:account).where.not(accounts: { silenced_at: nil }) }
@@ -192,6 +195,19 @@ class Status < ApplicationRecord
                      account: [:account_stat, user: :role],
                      active_mentions: { account: :account_stat },
                    ],
+                   quote: [
+                     :application,
+                     :tags,
+                     :preview_cards,
+                     :media_attachments,
+                     :conversation,
+                     :status_stat,
+                     :preloadable_poll,
+                     :reference_objects,
+                     :scheduled_expiration_status,
+                     account: [:account_stat, user: :role],
+                     active_mentions: { account: :account_stat },
+                   ],
                    thread: { account: :account_stat }
 
   delegate :domain, to: :account, prefix: true
@@ -226,8 +242,8 @@ class Status < ApplicationRecord
     !reblog_of_id.nil?
   end
 
-  def quote
-    reference_objects.where(attribute_type: 'QT').first&.target_status
+  def quote?
+    !quote_of_id.nil?
   end
 
   def within_realtime_window?
@@ -425,18 +441,27 @@ class Status < ApplicationRecord
 
   def compute_searchability
     local = account.local?
+    check_searchability = public_unlisted_searchability? ? 'public' : searchability
 
-    return 'private' if public_searchability? && account.silenced?
+    return 'private' if %w(public public_unlisted).include?(check_searchability) && account.silenced?
     return 'direct' if unsupported_searchability?
-    return searchability if local && !searchability.nil?
-    return 'direct' if local || [:public, :private, :direct, :limited].exclude?(account.searchability.to_sym)
+    return check_searchability if local && !check_searchability.nil?
+    return 'direct' if local || %i(public private direct limited).exclude?(account.searchability.to_sym)
 
     account_searchability = Status.searchabilities[account.searchability]
-    status_searchability = Status.searchabilities[searchability.nil? ? 'direct' : searchability]
+    status_searchability = Status.searchabilities[check_searchability.nil? ? 'direct' : check_searchability]
     Status.searchabilities.invert.fetch([account_searchability, status_searchability].max) || 'direct'
   end
 
   def compute_searchability_activitypub
+    return 'private' if public_unlisted_searchability?
+
+    compute_searchability
+  end
+
+  def compute_searchability_local
+    return 'public_unlisted' if public_unlisted_searchability?
+
     compute_searchability
   end
 
@@ -448,14 +473,20 @@ class Status < ApplicationRecord
 
   class << self
     def selectable_visibilities
-      visibilities.keys - %w(direct limited)
+      vs = visibilities.keys - %w(direct limited)
+      vs -= %w(public_unlisted) unless Setting.enable_public_unlisted_visibility
+      vs
     end
 
     def selectable_reblog_visibilities
-      %w(unset) + visibilities.keys - %w(direct limited)
+      %w(unset) + selectable_visibilities
     end
 
     def selectable_searchabilities
+      searchabilities.keys - %w(unsupported)
+    end
+
+    def selectable_searchabilities_for_search
       searchabilities.keys - %w(public_unlisted unsupported)
     end
 
@@ -475,12 +506,16 @@ class Status < ApplicationRecord
       ConversationMute.select('conversation_id').where(conversation_id: conversation_ids).where(account_id: account_id).each_with_object({}) { |m, h| h[m.conversation_id] = true }
     end
 
-    def pins_map(status_ids, account_id)
-      StatusPin.select('status_id').where(status_id: status_ids).where(account_id: account_id).each_with_object({}) { |p, h| h[p.status_id] = true }
+    def blocks_map(account_ids, account_id)
+      Block.where(account_id: account_id, target_account_id: account_ids).each_with_object({}) { |b, h| h[b.target_account_id] = true }
     end
 
-    def emoji_reactions_map(status_ids, account_id)
-      EmojiReaction.select('status_id').where(status_id: status_ids).where(account_id: account_id).each_with_object({}) { |e, h| h[e.status_id] = true }
+    def domain_blocks_map(domains, account_id)
+      AccountDomainBlock.where(account_id: account_id, domain: domains).each_with_object({}) { |d, h| h[d.domain] = true }
+    end
+
+    def pins_map(status_ids, account_id)
+      StatusPin.select('status_id').where(status_id: status_ids).where(account_id: account_id).each_with_object({}) { |p, h| h[p.status_id] = true }
     end
 
     def emoji_reaction_allows_map(status_ids, account_id)
@@ -556,6 +591,10 @@ class Status < ApplicationRecord
     end
   end
 
+  def distributable_friend?
+    public_visibility? || public_unlisted_visibility? || (unlisted_visibility? && (public_searchability? || public_unlisted_searchability?))
+  end
+
   private
 
   def update_status_stat!(attrs)
@@ -595,7 +634,7 @@ class Status < ApplicationRecord
                          elsif visibility == 'limited'
                            :limited
                          elsif visibility == 'private'
-                           searchability == 'public' ? :private : searchability
+                           searchability == 'public' || searchability == 'public_unlisted' ? :private : searchability
                          elsif visibility == 'direct'
                            searchability == 'limited' ? :limited : :direct
                          else

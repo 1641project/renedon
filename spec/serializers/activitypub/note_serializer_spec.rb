@@ -5,9 +5,11 @@ require 'rails_helper'
 describe ActivityPub::NoteSerializer do
   subject { JSON.parse(@serialization.to_json) }
 
+  let(:visibility) { :public }
+  let(:searchability) { :public }
   let!(:account) { Fabricate(:account) }
   let!(:other) { Fabricate(:account) }
-  let!(:parent) { Fabricate(:status, account: account, visibility: :public) }
+  let!(:parent) { Fabricate(:status, account: account, visibility: visibility, searchability: searchability, language: 'zh-TW') }
   let!(:reply_by_account_first) { Fabricate(:status, account: account, thread: parent, visibility: :public) }
   let!(:reply_by_account_next) { Fabricate(:status, account: account, thread: parent, visibility: :public) }
   let!(:reply_by_other_first) { Fabricate(:status, account: other, thread: parent, visibility: :public) }
@@ -15,17 +17,22 @@ describe ActivityPub::NoteSerializer do
   let!(:reply_by_account_visibility_direct) { Fabricate(:status, account: account, thread: parent, visibility: :direct) }
   let!(:referred) { nil }
   let!(:referred2) { nil }
-  let(:convert_to_quote) { false }
 
   before(:each) do
     parent.references << referred if referred.present?
     parent.references << referred2 if referred2.present?
-    account.user&.settings&.[]=('single_ref_to_quote', true) if convert_to_quote
     @serialization = ActiveModelSerializers::SerializableResource.new(parent, serializer: described_class, adapter: ActivityPub::Adapter)
   end
 
-  it 'has a Note type' do
-    expect(subject['type']).to eql('Note')
+  it 'has the expected shape' do
+    expect(subject).to include({
+      '@context' => include('https://www.w3.org/ns/activitystreams'),
+      'type' => 'Note',
+      'attributedTo' => ActivityPub::TagManager.instance.uri_for(account),
+      'contentMap' => include({
+        'zh-TW' => a_kind_of(String),
+      }),
+    })
   end
 
   it 'has a replies collection' do
@@ -48,6 +55,30 @@ describe ActivityPub::NoteSerializer do
     expect(subject['replies']['first']['items']).to_not include(reply_by_account_visibility_direct.uri)
   end
 
+  it 'send as public visibility' do
+    expect(subject['to']).to include 'https://www.w3.org/ns/activitystreams#Public'
+  end
+
+  context 'when public_unlisted visibility' do
+    let(:visibility) { :public_unlisted }
+
+    it 'send as unlisted visibility' do
+      expect(subject['to']).to_not include 'https://www.w3.org/ns/activitystreams#Public'
+    end
+  end
+
+  it 'send as public searchability' do
+    expect(subject['searchableBy']).to include 'https://www.w3.org/ns/activitystreams#Public'
+  end
+
+  context 'when public_unlisted searchability' do
+    let(:searchability) { :public_unlisted }
+
+    it 'send as private searchability' do
+      expect(subject['searchableBy']).to_not include 'https://www.w3.org/ns/activitystreams#Public'
+    end
+  end
+
   context 'when has quote but no_convert setting' do
     let(:referred) { Fabricate(:status) }
 
@@ -62,30 +93,6 @@ describe ActivityPub::NoteSerializer do
     it 'has as reference' do
       expect(subject['quoteUri']).to be_nil
       expect(subject['references']['first']['items']).to include referred.uri
-    end
-  end
-
-  context 'when has quote and convert setting' do
-    let(:referred) { Fabricate(:status) }
-    let(:convert_to_quote) { true }
-
-    it 'has as quote' do
-      expect(subject['quoteUri']).to_not be_nil
-      expect(subject['quoteUri']).to eq referred.uri
-      expect(subject['_misskey_quote']).to eq referred.uri
-      expect(subject['references']['first']['items']).to include referred.uri
-    end
-  end
-
-  context 'when has multiple references and convert setting' do
-    let(:referred) { Fabricate(:status) }
-    let(:referred2) { Fabricate(:status) }
-    let(:convert_to_quote) { true }
-
-    it 'has as quote' do
-      expect(subject['quoteUri']).to be_nil
-      expect(subject['references']['first']['items']).to include referred.uri
-      expect(subject['references']['first']['items']).to include referred2.uri
     end
   end
 end

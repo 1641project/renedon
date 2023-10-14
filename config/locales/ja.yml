@@ -422,6 +422,8 @@ ja:
       public_comment_hint: ドメインブロックの公開を有効にしている場合、このコメントも公開されます。
       reject_favourite: お気に入り、スタンプを拒否
       reject_favourite_hint: 今後のお気に入り、スタンプを拒否します。停止とは無関係です
+      reject_friend: フレンドサーバー申請を拒否
+      reject_friend_hint: 今後のフレンドサーバー申請を全て拒否します。停止とは無関係です
       reject_hashtag: ハッシュタグを拒否
       reject_hashtag_hint: ハッシュタグで検索できなくなり、トレンドにも影響しなくなります。停止とは無関係です
       reject_media: メディアファイルを拒否
@@ -492,6 +494,38 @@ ja:
       suppressed: 非表示
       title: おすすめフォロー
       unsuppress: おすすめフォローを復元
+    friend_servers:
+      accept: 相手の申請を承認する
+      add_new: フレンドサーバーを追加・申請
+      delete: 削除
+      description_html: <strong>フレンドサーバー</strong>とは、お互いのローカル公開・ローカル検索許可の投稿をそのまま交換するシステムです。
+      disabled: 無効
+      domain: ドメイン
+      edit:
+        allow_all_posts: このサーバーからの投稿を無条件で受け入れる
+        allow_all_posts_hint: 通常は自分のサーバーの誰もフォローしていないアカウントの投稿は例外を除き受け入れがブロックされます。そのブロックを解除します。スパムが発生した場合など、いつでもブロックを再開できます。
+        available: 有効にする
+        delivery_local: ローカル公開の公開範囲・検索許可を持った投稿をそのまま相手と共有する
+        delivery_local_hint: ローカル公開投稿は、通常は非収載に変換されて配送されます。その処理をせず、相手サーバーにもローカル公開と認識されるようにします。相手の連合タイムラインに掲載されます
+        description: フレンドサーバーは、登録と同時に相手方のサーバーへ申請されます。
+        domain: ドメイン
+        inbox_url: フレンドサーバーの inbox URL
+        inbox_url_hint: 空欄にした場合、自動で「https://ドメイン名/inbox」に設定されます。（例：https://example.com/inbox）相手のサーバーがinbox URLを特別に指定している場合、入力してください。
+        pseudo_relay: 全ての公開・ローカル公開・非収載かつ検索可能な投稿を送信する
+        pseudo_relay_hint: お互いに有効で、かつ相手側で「このサーバーからの投稿を無条件で受け入れる」が有効になっている必要があります
+        unlocked: このサーバーからの申請を自動で承認する
+      edit_friend: 編集
+      enabled: 有効
+      follow: こちらから申請する
+      pending: 承認待ち
+      pending_you: あなたの承認が必要
+      reject: 相手からの申請を却下する
+      save_and_enable: 保存して有効にする
+      setup: フレンドサーバーを追加・申請
+      signatures_not_enabled: セキュアモードまたは連合制限モードが有効の場合、フレンドサーバーの動作を確認していないため正常に動作しない可能性があります
+      status: ステータス
+      title: フレンドサーバー
+      unfollow: こちらの申請を取り消す
     instances:
       availability:
         description_html:
@@ -514,6 +548,7 @@ ja:
         policies:
           detect_invalid_subscription: 購読のプライバシーなし
           reject_favourite: お気に入りを拒否
+          reject_friend: フレンドサーバー申請を拒否
           reject_hashtag: ハッシュタグを拒否
           reject_media: メディアを拒否する
           reject_new_follow: 新規フォローを拒否
@@ -807,6 +842,7 @@ ja:
       discovery:
         emoji_reactions: スタンプ
         follow_recommendations: おすすめフォロー
+        friend_servers: フレンドサーバー
         preamble: Re:nedon を知らないユーザーを取り込むには、興味深いコンテンツを浮上させることが重要です。サーバー上で様々なディスカバリー機能がどのように機能するかを制御します。
         profile_directory: ディレクトリ
         public_timelines: 公開タイムライン
@@ -814,6 +850,7 @@ ja:
         publish_statistics: 統計情報を公開する
         title: 見つける
         trends: トレンド
+        visibilities: 公開範囲
       domain_blocks:
         all: 誰にでも許可
         disabled: 誰にも許可しない
@@ -1042,6 +1079,9 @@ ja:
     new_pending_account:
       body: 新しいアカウントの詳細は以下の通りです。この申請を承認または却下することができます。
       subject: '%{instance}で新しいアカウント (%{username}) が承認待ちです'
+    new_pending_friend_server:
+      body: 新しいフレンドサーバー %{domain} の申請が届いています。この申請を承認または却下することができます。
+      subject: '%{instance}で新しいフレンドサーバー (%{domain}) が承認待ちです'
     new_report:
       body: "%{reporter}さんが%{target}さんを通報しました"
       body_remote: "%{domain}の誰かが%{target}さんを通報しました"
@@ -1813,6 +1853,8 @@ ja:
       public: 誰でも
       public_long: この投稿は誰でも検索できます
       public_search_long: 検索が許可された全ての投稿が検索できます
+      public_unlisted: ローカルとフォロワー
+      public_unlisted_long: ローカル・フォロワー・反応者のみが検索できます
     show_more: もっと見る
     show_newer: 新しいものを表示
     show_older: 古いものを表示
@@ -1824,11 +1866,11 @@ ja:
       private: フォロワー限定
       private_long: フォロワーにのみ表示されます
       public: 公開
-      public_long: 誰でも見ることができ、かつ連合・ローカルタイムラインに表示されます
+      public_long: 誰でも見ることができ、かつ公開タイムラインに表示されます
       public_unlisted: ローカル公開
-      public_unlisted_long: 誰でも見ることができますが、連合タイムラインには表示されません
-      unlisted: 未収載
-      unlisted_long: 誰でも見ることができますが、連合・ローカルタイムラインには表示されません
+      public_unlisted_long: 誰でも見ることができますが、他のサーバーの連合タイムラインには表示されません
+      unlisted: 非収載
+      unlisted_long: 誰でも見ることができますが、公開タイムラインには表示されません
       unset: 設定なし
       unset_long: デフォルトの挙動に従います
   statuses_cleanup:

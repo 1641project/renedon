@@ -35,8 +35,10 @@ const messages = defineMessages({
   limited_short: { id: 'privacy.limited.short', defaultMessage: 'Limited menbers only' },
   mutual_short: { id: 'privacy.mutual.short', defaultMessage: 'Mutual followers only' },
   circle_short: { id: 'privacy.circle.short', defaultMessage: 'Circle members only' },
+  personal_short: { id: 'privacy.personal.short', defaultMessage: 'Yourself only' },
   direct_short: { id: 'privacy.direct.short', defaultMessage: 'Mentioned people only' },
   searchability_public_short: { id: 'searchability.public.short', defaultMessage: 'Public' },
+  searchability_public_unlisted_short: { id: 'searchability.public_unlisted.short', defaultMessage: 'Public unlisted' },
   searchability_private_short: { id: 'searchability.unlisted.short', defaultMessage: 'Followers' },
   searchability_direct_short: { id: 'searchability.private.short', defaultMessage: 'Reactionners' },
   searchability_limited_short: { id: 'searchability.direct.short', defaultMessage: 'Self only' },
@@ -145,7 +147,7 @@ class DetailedStatus extends ImmutablePureComponent {
     } else if (attachments.getIn([0, 'type']) === 'audio') {
       return '16 / 9';
     } else {
-      return (attachments.size === 1 && attachments.getIn([0, 'meta', 'small', 'aspect'])) ? attachments.getIn([0, 'meta', 'small', 'aspect']) : '3 / 2'
+      return (attachments.size === 1 && attachments.getIn([0, 'meta', 'small', 'aspect'])) ? attachments.getIn([0, 'meta', 'small', 'aspect']) : '3 / 2';
     }
   }
 
@@ -260,6 +262,7 @@ class DetailedStatus extends ImmutablePureComponent {
       'limited': { icon: 'get-pocket', text: intl.formatMessage(messages.limited_short) },
       'mutual': { icon: 'exchange', text: intl.formatMessage(messages.mutual_short) },
       'circle': { icon: 'user-circle', text: intl.formatMessage(messages.circle_short) },
+      'personal': { icon: 'sticky-note-o', text: intl.formatMessage(messages.personal_short) },
       'direct': { icon: 'at', text: intl.formatMessage(messages.direct_short) },
     };
 
@@ -268,6 +271,7 @@ class DetailedStatus extends ImmutablePureComponent {
 
     const searchabilityIconInfo = {
       'public': { icon: 'globe', text: intl.formatMessage(messages.searchability_public_short) },
+      'public_unlisted': { icon: 'cloud', text: intl.formatMessage(messages.searchability_public_unlisted_short) },
       'private': { icon: 'unlock', text: intl.formatMessage(messages.searchability_private_short) },
       'direct': { icon: 'lock', text: intl.formatMessage(messages.searchability_direct_short) },
       'limited': { icon: 'at', text: intl.formatMessage(messages.searchability_limited_short) },

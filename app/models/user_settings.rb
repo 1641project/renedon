@@ -25,7 +25,7 @@ class UserSettings
   setting :default_privacy, default: nil, in: %w(public public_unlisted login unlisted private)
   setting :stay_privacy, default: false
   setting :default_reblog_privacy, default: nil
-  setting :default_searchability, default: :direct, in: %w(public private direct limited)
+  setting :default_searchability, default: :direct, in: %w(public private direct limited public_unlisted)
   setting :default_searchability_of_search, default: :public, in: %w(public private direct limited)
   setting :use_public_index, default: true
   setting :disallow_unlisted_public_searchability, default: false
@@ -41,7 +41,7 @@ class UserSettings
   setting :dtl_force_with_tag, default: :none, in: %w(full searchability none)
   setting :dtl_force_subscribable, default: false
   setting :lock_follow_from_bot, default: false
-  setting :single_ref_to_quote, default: false
+  setting :allow_quote, default: true
 
   setting_inverse_alias :indexable, :noindex
 
@@ -67,6 +67,9 @@ class UserSettings
     setting :display_media_expand, default: true
     setting :auto_play, default: true
     setting :simple_timeline_menu, default: false
+    setting :show_quote_in_home, default: true
+    setting :show_quote_in_public, default: false
+    setting :hide_blocking_quote, default: true
   end
 
   namespace :notification_emails do
@@ -77,6 +80,7 @@ class UserSettings
     setting :follow_request, default: true
     setting :report, default: true
     setting :pending_account, default: true
+    setting :pending_friend_server, default: true
     setting :trends, default: true
     setting :appeal, default: true
     setting :software_updates, default: 'critical', in: %w(none critical patch all)

@@ -30,9 +30,11 @@ RSpec.describe ActivityPub::Activity::Create do
 
       let(:sender_software) { 'mastodon' }
       let(:custom_before) { false }
+      let(:active_friend) { false }
 
       before do
         Fabricate(:instance_info, domain: 'example.com', software: sender_software)
+        Fabricate(:friend_domain, domain: 'example.com', active_state: :accepted) if active_friend
         subject.perform unless custom_before
       end
 
@@ -234,6 +236,45 @@ RSpec.describe ActivityPub::Activity::Create do
         end
       end
 
+      context 'when public_unlisted with kmyblue:LocalPublic' do
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            to: ['http://example.com/followers', 'kmyblue:LocalPublic'],
+            cc: 'https://www.w3.org/ns/activitystreams#Public',
+          }
+        end
+
+        it 'creates status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.visibility).to eq 'unlisted'
+        end
+      end
+
+      context 'when public_unlisted with kmyblue:LocalPublic from friend-server' do
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            to: ['http://example.com/followers', 'kmyblue:LocalPublic'],
+            cc: 'https://www.w3.org/ns/activitystreams#Public',
+          }
+        end
+        let(:active_friend) { true }
+
+        it 'creates status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.visibility).to eq 'public_unlisted'
+        end
+      end
+
       context 'when private' do
         let(:object_json) do
           {
@@ -408,6 +449,29 @@ RSpec.describe ActivityPub::Activity::Create do
 
             expect(status).to_not be_nil
             expect(status.searchability).to eq 'public'
+          end
+        end
+
+        context 'with public_unlisted with kmyblue:LocalPublic' do
+          let(:searchable_by) { ['http://example.com/followers', 'kmyblue:LocalPublic'] }
+
+          it 'create status' do
+            status = sender.statuses.first
+
+            expect(status).to_not be_nil
+            expect(status.searchability).to eq 'private'
+          end
+        end
+
+        context 'with public_unlisted with kmyblue:LocalPublic from friend-server' do
+          let(:searchable_by) { ['http://example.com/followers', 'kmyblue:LocalPublic'] }
+          let(:active_friend) { true }
+
+          it 'create status' do
+            status = sender.statuses.first
+
+            expect(status).to_not be_nil
+            expect(status.searchability).to eq 'public_unlisted'
           end
         end
 
@@ -1099,6 +1163,177 @@ RSpec.describe ActivityPub::Activity::Create do
           expect(poll.votes.first).to be_nil
         end
       end
+
+      context 'with references' do
+        let(:recipient) { Fabricate(:account) }
+        let!(:target_status) { Fabricate(:status, account: Fabricate(:account, domain: nil)) }
+
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            references: {
+              id: 'target_status',
+              type: 'Collection',
+              first: {
+                type: 'CollectionPage',
+                next: nil,
+                partOf: 'target_status',
+                items: [
+                  ActivityPub::TagManager.instance.uri_for(target_status),
+                ],
+              },
+            },
+          }
+        end
+
+        it 'creates status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.quote).to be_nil
+          expect(status.references.pluck(:id)).to eq [target_status.id]
+        end
+      end
+
+      context 'with quote' do
+        let(:recipient) { Fabricate(:account) }
+        let!(:target_status) { Fabricate(:status, account: Fabricate(:account, domain: nil)) }
+
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            quote: ActivityPub::TagManager.instance.uri_for(target_status),
+          }
+        end
+
+        it 'creates status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.references.pluck(:id)).to eq [target_status.id]
+          expect(status.quote).to_not be_nil
+          expect(status.quote.id).to eq target_status.id
+        end
+      end
+
+      context 'with references and quote' do
+        let(:recipient) { Fabricate(:account) }
+        let!(:target_status) { Fabricate(:status, account: Fabricate(:account, domain: nil)) }
+
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            quote: ActivityPub::TagManager.instance.uri_for(target_status),
+            references: {
+              id: 'target_status',
+              type: 'Collection',
+              first: {
+                type: 'CollectionPage',
+                next: nil,
+                partOf: 'target_status',
+                items: [
+                  ActivityPub::TagManager.instance.uri_for(target_status),
+                ],
+              },
+            },
+          }
+        end
+
+        it 'creates status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.references.pluck(:id)).to eq [target_status.id]
+          expect(status.quote).to_not be_nil
+          expect(status.quote.id).to eq target_status.id
+        end
+      end
+
+      context 'with language' do
+        let(:to) { 'https://www.w3.org/ns/activitystreams#Public' }
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            to: to,
+            contentMap: { ja: 'Lorem ipsum' },
+          }
+        end
+
+        it 'create status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.language).to eq 'ja'
+        end
+      end
+
+      context 'without language' do
+        let(:to) { 'https://www.w3.org/ns/activitystreams#Public' }
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            to: to,
+          }
+        end
+
+        it 'create status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.language).to be_nil
+        end
+      end
+
+      context 'without language when misskey server' do
+        let(:sender_software) { 'misskey' }
+        let(:to) { 'https://www.w3.org/ns/activitystreams#Public' }
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            to: to,
+          }
+        end
+
+        it 'create status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.language).to eq 'ja'
+        end
+      end
+
+      context 'with language when misskey server' do
+        let(:sender_software) { 'misskey' }
+        let(:to) { 'https://www.w3.org/ns/activitystreams#Public' }
+        let(:object_json) do
+          {
+            id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+            type: 'Note',
+            content: 'Lorem ipsum',
+            to: to,
+            contentMap: { 'en-US': 'Lorem ipsum' },
+          }
+        end
+
+        it 'create status' do
+          status = sender.statuses.first
+
+          expect(status).to_not be_nil
+          expect(status.language).to eq 'en-US'
+        end
+      end
     end
 
     context 'with an encrypted message' do
@@ -1205,6 +1440,53 @@ RSpec.describe ActivityPub::Activity::Create do
       end
     end
 
+    context 'when sender quotes to local status' do
+      subject { described_class.new(json, sender, delivery: true) }
+
+      let!(:local_status) { Fabricate(:status) }
+      let(:object_json) do
+        {
+          id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+          type: 'Note',
+          content: 'Lorem ipsum',
+          quote: ActivityPub::TagManager.instance.uri_for(local_status),
+        }
+      end
+
+      before do
+        subject.perform
+      end
+
+      it 'creates status' do
+        status = sender.statuses.first
+
+        expect(status).to_not be_nil
+        expect(status.text).to eq 'Lorem ipsum'
+      end
+    end
+
+    context 'when sender quotes to non-local status' do
+      subject { described_class.new(json, sender, delivery: true) }
+
+      let!(:remote_status) { Fabricate(:status, uri: 'https://foo.bar/among', account: Fabricate(:account, domain: 'foo.bar', uri: 'https://foo.bar/account')) }
+      let(:object_json) do
+        {
+          id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+          type: 'Note',
+          content: 'Lorem ipsum',
+          quote: ActivityPub::TagManager.instance.uri_for(remote_status),
+        }
+      end
+
+      before do
+        subject.perform
+      end
+
+      it 'creates status' do
+        expect(sender.statuses.count).to eq 0
+      end
+    end
+
     context 'when sender targets a local user' do
       subject { described_class.new(json, sender, delivery: true) }
 
@@ -1252,6 +1534,35 @@ RSpec.describe ActivityPub::Activity::Create do
 
         expect(status).to_not be_nil
         expect(status.text).to eq 'Lorem ipsum'
+      end
+    end
+
+    context 'when sender is in friend server' do
+      subject { described_class.new(json, sender, delivery: true) }
+
+      let!(:friend) { Fabricate(:friend_domain, domain: sender.domain, active_state: :accepted) }
+      let(:object_json) do
+        {
+          id: [ActivityPub::TagManager.instance.uri_for(sender), '#bar'].join,
+          type: 'Note',
+          content: 'Lorem ipsum',
+        }
+      end
+
+      it 'creates status' do
+        subject.perform
+        status = sender.statuses.first
+
+        expect(status).to_not be_nil
+        expect(status.text).to eq 'Lorem ipsum'
+      end
+
+      it 'whey no-relay not creates status' do
+        friend.update(allow_all_posts: false)
+        subject.perform
+        status = sender.statuses.first
+
+        expect(status).to be_nil
       end
     end
 

@@ -39,8 +39,8 @@ class EmojiReaction < ApplicationRecord
     custom_emoji.present?
   end
 
-  def remote_custom_emoji?
-    custom_emoji? && !custom_emoji.local?
+  def sign?
+    status&.distributable_friend?
   end
 
   private

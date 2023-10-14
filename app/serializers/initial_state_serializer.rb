@@ -37,6 +37,7 @@ class InitialStateSerializer < ActiveModel::Serializer
       status_page_url: Setting.status_page_url,
       sso_redirect: sso_redirect,
       dtl_tag: DTL_ENABLED ? DTL_TAG : nil,
+      enable_local_privacy: Setting.enable_public_unlisted_visibility,
     }
 
     if object.current_account
@@ -61,6 +62,9 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:show_trends]       = Setting.trends && object.current_account.user.setting_trends
       store[:bookmark_category_needed] = object.current_account.user.setting_bookmark_category_needed
       store[:simple_timeline_menu] = object.current_account.user.setting_simple_timeline_menu
+      store[:show_quote_in_home] = object.current_account.user.setting_show_quote_in_home
+      store[:show_quote_in_public] = object.current_account.user.setting_show_quote_in_public
+      store[:hide_blocking_quote] = object.current_account.user.setting_hide_blocking_quote
     else
       store[:auto_play_gif] = Setting.auto_play_gif
       store[:display_media] = Setting.display_media
@@ -68,6 +72,8 @@ class InitialStateSerializer < ActiveModel::Serializer
       store[:use_blurhash]  = Setting.use_blurhash
       store[:enable_emoji_reaction] = Setting.enable_emoji_reaction
       store[:show_emoji_reaction_on_timeline] = Setting.enable_emoji_reaction
+      store[:show_quote_in_home] = true
+      store[:show_quote_in_public] = true
     end
 
     store[:disabled_account_id] = object.disabled_account.id.to_s if object.disabled_account

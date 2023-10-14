@@ -114,7 +114,7 @@ RSpec.describe Status do
     end
   end
 
-  describe '#searchability' do
+  describe '#compute_searchability' do
     subject { Fabricate(:status, account: account, searchability: status_searchability) }
 
     let(:account_searchability) { :public }
@@ -134,6 +134,27 @@ RSpec.describe Status do
 
       it 'returns private' do
         expect(subject.compute_searchability).to eq 'private'
+      end
+    end
+
+    context 'when public-public_unlisted but silenced' do
+      let(:silenced_at) { Time.now.utc }
+      let(:status_searchability) { :public_unlisted }
+
+      it 'returns private' do
+        expect(subject.compute_searchability).to eq 'private'
+      end
+    end
+
+    context 'when public-public_unlisted' do
+      let(:status_searchability) { :public_unlisted }
+
+      it 'returns public' do
+        expect(subject.compute_searchability).to eq 'public'
+      end
+
+      it 'returns public_unlisted for local' do
+        expect(subject.compute_searchability_local).to eq 'public_unlisted'
       end
     end
 
@@ -213,6 +234,57 @@ RSpec.describe Status do
 
       it 'returns public' do
         expect(subject.compute_searchability).to eq 'public'
+      end
+    end
+
+    context 'when public-public_unlisted of local account' do
+      let(:account_searchability) { :public }
+      let(:account_domain) { nil }
+      let(:status_searchability) { :public_unlisted }
+
+      it 'returns public' do
+        expect(subject.compute_searchability).to eq 'public'
+      end
+
+      it 'returns public_unlisted for local' do
+        expect(subject.compute_searchability_local).to eq 'public_unlisted'
+      end
+
+      it 'returns private for activitypub' do
+        expect(subject.compute_searchability_activitypub).to eq 'private'
+      end
+    end
+  end
+
+  describe '#quote' do
+    let(:target_status) { Fabricate(:status) }
+    let(:quote) { true }
+
+    before do
+      Fabricate(:status_reference, status: subject, target_status: target_status, quote: quote)
+    end
+
+    context 'when quoting single' do
+      it 'get quote' do
+        expect(subject.quote).to_not be_nil
+        expect(subject.quote.id).to eq target_status.id
+      end
+    end
+
+    context 'when multiple quotes' do
+      it 'get quote' do
+        target2 = Fabricate(:status)
+        Fabricate(:status_reference, status: subject, quote: quote)
+        expect(subject.quote).to_not be_nil
+        expect([target_status.id, target2.id].include?(subject.quote.id)).to be true
+      end
+    end
+
+    context 'when no quote but reference' do
+      let(:quote) { false }
+
+      it 'get quote' do
+        expect(subject.quote).to be_nil
       end
     end
   end
@@ -321,6 +393,38 @@ RSpec.describe Status do
     it 'contains true value' do
       account.mute_conversation!(status.conversation)
       expect(subject[status.conversation.id]).to be true
+    end
+  end
+
+  describe '.blocks_map' do
+    subject { described_class.blocks_map([status.account.id], account) }
+
+    let(:status)  { Fabricate(:status) }
+    let(:account) { Fabricate(:account) }
+
+    it 'returns a hash' do
+      expect(subject).to be_a Hash
+    end
+
+    it 'contains true value' do
+      account.block!(status.account)
+      expect(subject[status.account.id]).to be true
+    end
+  end
+
+  describe '.domain_blocks_map' do
+    subject { described_class.domain_blocks_map([status.account.domain], account) }
+
+    let(:status)  { Fabricate(:status, account: Fabricate(:account, domain: 'foo.bar', uri: 'https://foo.bar/status')) }
+    let(:account) { Fabricate(:account) }
+
+    it 'returns a hash' do
+      expect(subject).to be_a Hash
+    end
+
+    it 'contains true value' do
+      account.block_domain!(status.account.domain)
+      expect(subject[status.account.domain]).to be true
     end
   end
 

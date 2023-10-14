@@ -103,11 +103,11 @@ class ComposeForm extends ImmutablePureComponent {
   };
 
   canSubmit = () => {
-    const { isSubmitting, isChangingUpload, isUploading, anyMedia, privacy, circleId } = this.props;
+    const { isSubmitting, isChangingUpload, isUploading, anyMedia, privacy, circleId, isEditing } = this.props;
     const fulltext = this.getFulltextForCharacterCounting();
     const isOnlyWhitespace = fulltext.length !== 0 && fulltext.trim().length === 0;
 
-    return !(isSubmitting || isUploading || isChangingUpload || length(fulltext) > 500 || (isOnlyWhitespace && !anyMedia) || (privacy === 'circle' && !circleId));
+    return !(isSubmitting || isUploading || isChangingUpload || length(fulltext) > 500 || (isOnlyWhitespace && !anyMedia) || (privacy === 'circle' && !isEditing && !circleId));
   };
 
   handleSubmit = (e) => {

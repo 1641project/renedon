@@ -78,14 +78,16 @@ class PostStatusService < BaseService
     @visibility   = :direct if @in_reply_to&.limited_visibility?
     @visibility   = :limited if %w(mutual circle).include?(@options[:visibility])
     @visibility   = :unlisted if (@visibility&.to_sym == :public || @visibility&.to_sym == :public_unlisted || @visibility&.to_sym == :login) && @account.silenced?
-    @visibility   = :public_unlisted if @visibility&.to_sym == :public && !@options[:force_visibility] && !@options[:application]&.superapp && @account.user&.setting_public_post_to_unlisted
+    @visibility   = :public_unlisted if @visibility&.to_sym == :public && !@options[:force_visibility] && !@options[:application]&.superapp && @account.user&.setting_public_post_to_unlisted && Setting.enable_public_unlisted_visibility
     @limited_scope = @options[:visibility]&.to_sym if @visibility == :limited
     @searchability = searchability
-    @searchability = :private if @account.silenced? && @searchability&.to_sym == :public
+    @searchability = :private if @account.silenced? && %i(public public_unlisted).include?(@searchability&.to_sym)
     @markdown     = @options[:markdown] || false
     @scheduled_at = @options[:scheduled_at]&.to_datetime
     @scheduled_at = nil if scheduled_in_the_past?
     @reference_ids = (@options[:status_reference_ids] || []).map(&:to_i).filter(&:positive?)
+    raise ArgumentError if !Setting.enable_public_unlisted_visibility && @visibility == :public_unlisted
+
     load_circle
     overwrite_dtl_post
     process_sensitive_words
@@ -127,6 +129,8 @@ class PostStatusService < BaseService
     case @options[:searchability]&.to_sym
     when :public
       case @visibility&.to_sym when :public, :public_unlisted, :login, :unlisted then :public when :private then :private else :direct end
+    when :public_unlisted
+      case @visibility&.to_sym when :public, :public_unlisted, :login, :unlisted then :public_unlisted when :private then :private else :direct end
     when :private
       case @visibility&.to_sym when :public, :public_unlisted, :login, :unlisted, :private then :private else :direct end
     when :direct
@@ -142,6 +146,8 @@ class PostStatusService < BaseService
     @status = @account.statuses.new(status_attributes)
     process_mentions_service.call(@status, limited_type: @status.limited_visibility? ? @limited_scope : '', circle: @circle, save_records: false)
     safeguard_mentions!(@status)
+
+    @status.limited_scope = :personal if @status.limited_visibility? && !process_mentions_service.mentions?
 
     UpdateStatusExpirationService.new.call(@status)
 
@@ -192,9 +198,9 @@ class PostStatusService < BaseService
     ProcessReferencesService.call_service(@status, @reference_ids, [])
     LinkCrawlWorker.perform_async(@status.id)
     DistributionWorker.perform_async(@status.id)
-    ActivityPub::DistributionWorker.perform_async(@status.id)
+    ActivityPub::DistributionWorker.perform_async(@status.id) unless @status.personal_limited?
     PollExpirationNotifyWorker.perform_at(@status.poll.expires_at, @status.poll.id) if @status.poll
-    GroupReblogService.new.call(@status)
+    GroupReblogService.new.call(@status) unless @status.personal_limited?
   end
 
   def validate_status!
@@ -219,7 +225,7 @@ class PostStatusService < BaseService
   end
 
   def process_mentions_service
-    ProcessMentionsService.new
+    @process_mentions_service ||= ProcessMentionsService.new
   end
 
   def process_hashtags_service

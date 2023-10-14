@@ -47,6 +47,8 @@ class Form::AdminSettings
     streaming_other_servers_emoji_reaction
     enable_emoji_reaction
     check_lts_version_only
+    enable_public_unlisted_visibility
+    unlocked_friend
   ).freeze
 
   INTEGER_KEYS = %i(
@@ -74,6 +76,8 @@ class Form::AdminSettings
     streaming_other_servers_emoji_reaction
     enable_emoji_reaction
     check_lts_version_only
+    enable_public_unlisted_visibility
+    unlocked_friend
   ).freeze
 
   UPLOAD_KEYS = %i(

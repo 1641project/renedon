@@ -9,7 +9,7 @@ import { supportsPassiveEvents } from 'detect-passive-events';
 import Overlay from 'react-overlays/Overlay';
 
 import { Icon }  from 'mastodon/components/icon';
-import { enableLoginPrivacy } from 'mastodon/initial_state';
+import { enableLoginPrivacy, enableLocalPrivacy } from 'mastodon/initial_state';
 
 import { IconButton } from '../../../components/icon_button';
 
@@ -244,6 +244,10 @@ class PrivacyDropdown extends PureComponent {
 
     if (!enableLoginPrivacy) {
       this.selectableOptions = this.selectableOptions.filter((opt) => opt.value !== 'login');
+    }
+
+    if (!enableLocalPrivacy) {
+      this.selectableOptions = this.selectableOptions.filter((opt) => opt.value !== 'public_unlisted');
     }
 
     if (this.props.noDirect) {

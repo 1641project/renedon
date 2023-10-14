@@ -166,6 +166,39 @@ RSpec.describe UpdateStatusService, type: :service do
     end
   end
 
+  context 'when personal_limited mentions in text change' do
+    let!(:account) { Fabricate(:account) }
+    let!(:bob) { Fabricate(:account, username: 'bob') }
+    let!(:status) { PostStatusService.new.call(account, text: 'Hello', visibility: 'circle', circle_id: Fabricate(:circle, account: account).id) }
+
+    before do
+      subject.call(status, status.account_id, text: 'Hello @bob')
+    end
+
+    it 'changes mentions' do
+      expect(status.active_mentions.pluck(:account_id)).to eq [bob.id]
+    end
+
+    it 'changes visibilities' do
+      expect(status.visibility).to eq 'limited'
+      expect(status.limited_scope).to eq 'circle'
+    end
+  end
+
+  context 'when personal_limited in text change' do
+    let!(:account) { Fabricate(:account) }
+    let!(:status) { PostStatusService.new.call(account, text: 'Hello', visibility: 'circle', circle_id: Fabricate(:circle, account: account).id) }
+
+    before do
+      subject.call(status, status.account_id, text: 'AAA')
+    end
+
+    it 'not changing visibilities' do
+      expect(status.visibility).to eq 'limited'
+      expect(status.limited_scope).to eq 'personal'
+    end
+  end
+
   context 'when hashtags in text change' do
     let!(:account) { Fabricate(:account) }
     let!(:status) { PostStatusService.new.call(account, text: 'Hello #foo') }

@@ -127,6 +127,13 @@ RSpec.describe PostStatusService, type: :service do
     expect(status.searchability).to eq 'private'
   end
 
+  it 'creates a status with limited searchability for silenced users with public_unlisted searchability' do
+    status = subject.call(Fabricate(:account, silenced: true), text: 'test', searchability: :public_unlisted, visibility: :public)
+
+    expect(status).to be_persisted
+    expect(status.searchability).to eq 'private'
+  end
+
   it 'creates a status with the given searchability=public / visibility=unlisted' do
     status = create_status_with_options(searchability: :public, visibility: :unlisted)
 
@@ -134,8 +141,22 @@ RSpec.describe PostStatusService, type: :service do
     expect(status.searchability).to eq 'public'
   end
 
+  it 'creates a status with the given searchability=public_unlisted / visibility=unlisted' do
+    status = create_status_with_options(searchability: :public_unlisted, visibility: :unlisted)
+
+    expect(status).to be_persisted
+    expect(status.searchability).to eq 'public_unlisted'
+  end
+
   it 'creates a status with the given searchability=public / visibility=private' do
     status = create_status_with_options(searchability: :public, visibility: :private)
+
+    expect(status).to be_persisted
+    expect(status.searchability).to eq 'private'
+  end
+
+  it 'creates a status with the given searchability=public_unlisted / visibility=private' do
+    status = create_status_with_options(searchability: :public_unlisted, visibility: :private)
 
     expect(status).to be_persisted
     expect(status.searchability).to eq 'private'
@@ -188,6 +209,17 @@ RSpec.describe PostStatusService, type: :service do
     expect(status.mentioned_accounts.first.id).to eq mutual_account.id
   end
 
+  it 'personal visibility with mutual' do
+    account = Fabricate(:account)
+    text = 'This is an English text.'
+
+    status = subject.call(account, text: text, visibility: 'mutual')
+
+    expect(status.visibility).to eq 'limited'
+    expect(status.limited_scope).to eq 'personal'
+    expect(status.mentioned_accounts.count).to eq 0
+  end
+
   it 'circle visibility' do
     account = Fabricate(:account)
     circle_account = Fabricate(:account)
@@ -225,6 +257,31 @@ RSpec.describe PostStatusService, type: :service do
     text = 'This is an English text.'
 
     expect { subject.call(account, text: text, visibility: 'limited') }.to raise_exception ActiveRecord::RecordInvalid
+  end
+
+  it 'personal visibility with circle' do
+    account = Fabricate(:account)
+    circle = Fabricate(:circle, account: account)
+    text = 'This is an English text.'
+
+    status = subject.call(account, text: text, visibility: 'circle', circle_id: circle.id)
+
+    expect(status.visibility).to eq 'limited'
+    expect(status.limited_scope).to eq 'personal'
+    expect(status.mentioned_accounts.count).to eq 0
+  end
+
+  it 'using empty circle but with mention' do
+    account = Fabricate(:account)
+    Fabricate(:account, username: 'bob', domain: nil)
+    circle = Fabricate(:circle, account: account)
+    text = 'This is an English text. @bob'
+
+    status = subject.call(account, text: text, visibility: 'circle', circle_id: circle.id)
+
+    expect(status.visibility).to eq 'limited'
+    expect(status.limited_scope).to eq 'circle'
+    expect(status.mentioned_accounts.count).to eq 1
   end
 
   it 'safeguards mentions' do
@@ -268,6 +325,19 @@ RSpec.describe PostStatusService, type: :service do
 
     expect(DistributionWorker).to have_received(:perform_async).with(status.id)
     expect(ActivityPub::DistributionWorker).to have_received(:perform_async).with(status.id)
+  end
+
+  it 'gets distributed when personal post' do
+    allow(DistributionWorker).to receive(:perform_async)
+    allow(ActivityPub::DistributionWorker).to receive(:perform_async)
+
+    account = Fabricate(:account)
+
+    empty_circle = Fabricate(:circle, account: account)
+    status = subject.call(account, text: 'test status update', visibility: 'circle', circle_id: empty_circle.id)
+
+    expect(DistributionWorker).to have_received(:perform_async).with(status.id)
+    expect(ActivityPub::DistributionWorker).to_not have_received(:perform_async).with(status.id)
   end
 
   it 'crawls links' do

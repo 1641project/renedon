@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2023_10_07_090808) do
+ActiveRecord::Schema[7.0].define(version: 2023_10_09_235215) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -447,6 +447,16 @@ ActiveRecord::Schema[7.0].define(version: 2023_10_07_090808) do
     t.index ["follow_id"], name: "index_circle_accounts_on_follow_id"
   end
 
+  create_table "circle_statuses", force: :cascade do |t|
+    t.bigint "circle_id"
+    t.bigint "status_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["circle_id", "status_id"], name: "index_circle_statuses_on_circle_id_and_status_id", unique: true
+    t.index ["circle_id"], name: "index_circle_statuses_on_circle_id"
+    t.index ["status_id"], name: "index_circle_statuses_on_status_id"
+  end
+
   create_table "circles", force: :cascade do |t|
     t.bigint "account_id", null: false
     t.string "title", default: "", null: false
@@ -526,6 +536,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_10_07_090808) do
     t.integer "action", default: 0, null: false
     t.boolean "exclude_follows", default: false, null: false
     t.boolean "exclude_localusers", default: false, null: false
+    t.boolean "with_quote", default: true, null: false
     t.index ["account_id"], name: "index_custom_filters_on_account_id"
   end
 
@@ -573,6 +584,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_10_07_090808) do
     t.boolean "hidden_anonymous", default: false, null: false
     t.boolean "detect_invalid_subscription", default: false, null: false
     t.boolean "reject_reply_exclude_followers", default: false, null: false
+    t.boolean "reject_friend", default: false, null: false
     t.index ["domain"], name: "index_domain_blocks_on_domain", unique: true
   end
 
@@ -663,6 +675,23 @@ ActiveRecord::Schema[7.0].define(version: 2023_10_07_090808) do
     t.string "languages", array: true
     t.index ["account_id", "target_account_id"], name: "index_follows_on_account_id_and_target_account_id", unique: true
     t.index ["target_account_id"], name: "index_follows_on_target_account_id"
+  end
+
+  create_table "friend_domains", force: :cascade do |t|
+    t.string "domain", default: "", null: false
+    t.string "inbox_url", default: "", null: false
+    t.integer "active_state", default: 0, null: false
+    t.integer "passive_state", default: 0, null: false
+    t.string "active_follow_activity_id"
+    t.string "passive_follow_activity_id"
+    t.boolean "available", default: true, null: false
+    t.boolean "pseudo_relay", default: false, null: false
+    t.boolean "allow_all_posts", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "delivery_local", default: true, null: false
+    t.index ["domain"], name: "index_friend_domains_on_domain", unique: true
+    t.index ["inbox_url"], name: "index_friend_domains_on_inbox_url", unique: true
   end
 
   create_table "identities", force: :cascade do |t|
@@ -1133,6 +1162,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_10_07_090808) do
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
     t.string "attribute_type"
+    t.boolean "quote", default: false, null: false
     t.index ["status_id"], name: "index_status_references_on_status_id"
     t.index ["target_status_id"], name: "index_status_references_on_target_status_id"
   end
@@ -1189,6 +1219,7 @@ ActiveRecord::Schema[7.0].define(version: 2023_10_07_090808) do
     t.integer "searchability"
     t.boolean "markdown", default: false
     t.integer "limited_scope"
+    t.bigint "quote_of_id"
     t.index ["account_id", "id", "visibility", "updated_at"], name: "index_statuses_20190820", order: { id: :desc }, where: "(deleted_at IS NULL)"
     t.index ["account_id", "reblog_of_id", "deleted_at", "searchability"], name: "index_statuses_for_get_following_accounts_to_search", where: "((deleted_at IS NULL) AND (reblog_of_id IS NULL) AND (searchability = ANY (ARRAY[0, 10, 1])))"
     t.index ["account_id"], name: "index_statuses_on_account_id"
@@ -1415,6 +1446,8 @@ ActiveRecord::Schema[7.0].define(version: 2023_10_07_090808) do
   add_foreign_key "circle_accounts", "accounts", on_delete: :cascade
   add_foreign_key "circle_accounts", "circles", on_delete: :cascade
   add_foreign_key "circle_accounts", "follows", on_delete: :cascade
+  add_foreign_key "circle_statuses", "circles", on_delete: :cascade
+  add_foreign_key "circle_statuses", "statuses", on_delete: :cascade
   add_foreign_key "circles", "accounts", on_delete: :cascade
   add_foreign_key "conversation_mutes", "accounts", name: "fk_225b4212bb", on_delete: :cascade
   add_foreign_key "conversation_mutes", "conversations", on_delete: :cascade

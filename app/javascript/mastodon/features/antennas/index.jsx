@@ -79,7 +79,7 @@ class Antennas extends ImmutablePureComponent {
         >
           {antennas.map(antenna => (
             <ColumnLink key={antenna.get('id')} to={`/antennast/${antenna.get('id')}`} icon='wifi' text={antenna.get('title')}
-                        badge={antenna.get('insert_feeds') ? intl.formatMessage(antenna.get('list') ? messages.insert_list : messages.insert_home) : undefined} />
+              badge={antenna.get('insert_feeds') ? intl.formatMessage(antenna.get('list') ? messages.insert_list : messages.insert_home) : undefined} />
           ))}
         </ScrollableList>
 

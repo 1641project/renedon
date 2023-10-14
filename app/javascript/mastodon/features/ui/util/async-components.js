@@ -54,6 +54,10 @@ export function Circles () {
   return import(/* webpackChunkName: "features/circles" */'../../circles');
 }
 
+export function CircleStatuses () {
+  return import(/* webpackChunkName: "features/circle_statuses" */'../../circle_statuses');
+}
+
 export function Status () {
   return import(/* webpackChunkName: "features/status" */'../../status');
 }
@@ -100,6 +104,10 @@ export function EmojiReactions () {
 
 export function StatusReferences () {
   return import(/* webpackChunkName: "features/status_references" */'../../status_references');
+}
+
+export function MentionedUsers () {
+  return import(/* webpackChunkName: "features/mentioned_users" */'../../mentioned_users');
 }
 
 export function FollowRequests () {

@@ -13,7 +13,7 @@ module Mastodon
     end
 
     def kmyblue_flag
-      'Dev_1'
+      'Dev_2'
     end
 
     def major

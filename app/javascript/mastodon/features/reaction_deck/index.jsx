@@ -100,7 +100,7 @@ class ReactionDeck extends ImmutablePureComponent {
     const newDeck = this.deckToArray();
     newDeck.push('👍');
     this.props.onChange(newDeck);
-  }
+  };
 
   render () {
     const { intl, deck, emojiMap, multiColumn } = this.props;
@@ -123,38 +123,38 @@ class ReactionDeck extends ImmutablePureComponent {
           showBackButton
         />
 
-          <ScrollableList
-            scrollKey='reaction_deck'
-            bindToDocument={!multiColumn}
-          >
-            <DragDropContext onDragEnd={this.handleReorder}>
-              <StrictModeDroppable droppableId='deckitems'>
-                {(provided) => (
-                  <div className='deckitems reaction_deck_container' {...provided.droppableProps} ref={provided.innerRef}>
-                    {deck.map((emoji, index) => (
-                      <Draggable key={index} draggableId={'' + index} index={index}>
-                        {(provided2) => (
-                          <div className='reaction_deck_container__row' ref={provided2.innerRef} {...provided2.draggableProps}>
-                            <Icon id='bars' className='handle' {...provided2.dragHandleProps} />
-                            <ReactionEmoji emojiMap={emojiMap}
-                                           emoji={emoji.get('name')}
-                                           index={index}
-                                           onChange={this.handleChange}
-                                           onRemove={this.handleRemove}
-                                           className='reaction_emoji'
-                                           />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
+        <ScrollableList
+          scrollKey='reaction_deck'
+          bindToDocument={!multiColumn}
+        >
+          <DragDropContext onDragEnd={this.handleReorder}>
+            <StrictModeDroppable droppableId='deckitems'>
+              {(provided) => (
+                <div className='deckitems reaction_deck_container' {...provided.droppableProps} ref={provided.innerRef}>
+                  {deck.map((emoji, index) => (
+                    <Draggable key={index} draggableId={'' + index} index={index}>
+                      {(provided2) => (
+                        <div className='reaction_deck_container__row' ref={provided2.innerRef} {...provided2.draggableProps}>
+                          <Icon id='bars' className='handle' {...provided2.dragHandleProps} />
+                          <ReactionEmoji emojiMap={emojiMap}
+                            emoji={emoji.get('name')}
+                            index={index}
+                            onChange={this.handleChange}
+                            onRemove={this.handleRemove}
+                            className='reaction_emoji'
+                          />
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
 
-                    <Button text={intl.formatMessage(messages.reaction_deck_add)} onClick={this.handleAdd} />
-                  </div>
-                )}
-              </StrictModeDroppable>
-            </DragDropContext>
-          </ScrollableList>
+                  <Button text={intl.formatMessage(messages.reaction_deck_add)} onClick={this.handleAdd} />
+                </div>
+              )}
+            </StrictModeDroppable>
+          </DragDropContext>
+        </ScrollableList>
 
         <Helmet>
           <meta name='robots' content='noindex' />

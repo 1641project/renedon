@@ -46,6 +46,7 @@ import {
   Favourites,
   EmojiReactions,
   StatusReferences,
+  MentionedUsers,
   DirectTimeline,
   HashtagTimeline,
   AntennaTimeline,
@@ -65,6 +66,7 @@ import {
   Lists,
   Antennas,
   Circles,
+  CircleStatuses,
   AntennaSetting,
   Directory,
   Explore,
@@ -90,7 +92,7 @@ const mapStateToProps = state => ({
   hasComposingText: state.getIn(['compose', 'text']).trim().length !== 0,
   hasMediaAttachments: state.getIn(['compose', 'media_attachments']).size > 0,
   canUploadMore: !state.getIn(['compose', 'media_attachments']).some(x => ['audio', 'video'].includes(x.get('type'))) && state.getIn(['compose', 'media_attachments']).size < 4,
-  dropdownMenuIsOpen: state.getIn(['dropdown_menu', 'openId']) !== null,
+  dropdownMenuIsOpen: state.dropdownMenu.openId !== null,
   firstLaunch: state.getIn(['settings', 'introductionVersion'], 0) < INTRODUCTION_VERSION,
   username: state.getIn(['accounts', me, 'username']),
 });
@@ -242,6 +244,7 @@ class SwitchingColumnsArea extends PureComponent {
           <WrappedRoute path='/@:acct/:statusId/favourites' component={Favourites} content={children} />
           <WrappedRoute path='/@:acct/:statusId/emoji_reactions' component={EmojiReactions} content={children} />
           <WrappedRoute path='/@:acct/:statusId/references' component={StatusReferences} content={children} />
+          <WrappedRoute path='/@:acct/:statusId/mentioned_users' component={MentionedUsers} content={children} />
 
           {/* Legacy routes, cannot be easily factored with other routes because they share a param name */}
           <WrappedRoute path='/timelines/tag/:id' component={HashtagTimeline} content={children} />
@@ -259,6 +262,7 @@ class SwitchingColumnsArea extends PureComponent {
           <WrappedRoute path='/mutes' component={Mutes} content={children} />
           <WrappedRoute path='/lists' component={Lists} content={children} />
           <WrappedRoute path='/antennasw' component={Antennas} content={children} />
+          <WrappedRoute path='/circles/:id' component={CircleStatuses} content={children} />
           <WrappedRoute path='/circles' component={Circles} content={children} />
 
           <Route component={BundleColumnError} />
