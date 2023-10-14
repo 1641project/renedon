@@ -47,7 +47,7 @@ module Mastodon
     end
 
     def build_metadata
-      ['kmyblue', to_s_of_kmyblue, ENV.fetch('MASTODON_VERSION_METADATA', nil)].compact.join('.')
+      ['renedon', to_s_of_kmyblue, ENV.fetch('MASTODON_VERSION_METADATA', nil)].compact.join('.')
     end
 
     def to_a
