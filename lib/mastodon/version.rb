@@ -29,7 +29,7 @@ module Mastodon
     end
 
     def default_prerelease
-      'Dev4'
+      'Dev5'
     end
 
     def prerelease
