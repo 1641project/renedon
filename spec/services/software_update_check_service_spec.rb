@@ -139,7 +139,7 @@ RSpec.describe SoftwareUpdateCheckService, type: :service do
   end
 
   context 'when using the default update checking API' do
-    let(:update_check_url) { 'https://updater.renedon.icu' }
+    let(:update_check_url) { 'https://kmy.blue/update-check' }
 
     it_behaves_like 'when the feature is enabled'
   end
