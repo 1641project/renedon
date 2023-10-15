@@ -5,7 +5,7 @@ module Mastodon
     module_function
 
     def kmyblue_major
-      1
+      7
     end
 
     def kmyblue_minor
@@ -13,23 +13,23 @@ module Mastodon
     end
 
     def kmyblue_flag
-      'Dev_2'
+      nil # 'LTS'
     end
 
     def major
-      4
-    end
-
-    def minor
-      2
-    end
-
-    def patch
       1
     end
 
+    def minor
+      0
+    end
+
+    def patch
+      0
+    end
+
     def default_prerelease
-      ''
+      'Dev3'
     end
 
     def prerelease
