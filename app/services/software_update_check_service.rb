@@ -27,13 +27,16 @@ class SoftwareUpdateCheckService < BaseService
   end
 
   def api_url
-    ENV.fetch('UPDATE_CHECK_URL', 'https://kmy.blue/update-check')
+    if Setting.check_lts_version_only
+      'https://updater.renedon.icu/lts'
+    else
+      ENV.fetch('UPDATE_CHECK_URL', 'https://updater.renedon.icu')
+    end
   end
 
   def version
     if ENV.fetch('UPDATE_CHECK_SOURCE', 'kmyblue') == 'kmyblue'
       @version = "#{Mastodon::Version.kmyblue_major}.#{Mastodon::Version.kmyblue_minor}"
-      @version += '-lts' if Setting.check_lts_version_only
     else
       @version = Mastodon::Version.to_s.split('+')[0]
     end
