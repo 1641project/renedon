@@ -25,15 +25,10 @@ RSpec.describe Api::V1::AccountsController do
     context 'when given truthy agreement' do
       let(:agreement) { 'true' }
 
-      it 'returns http success' do
+      it 'creates a user', :aggregate_failures do
         expect(response).to have_http_status(200)
-      end
-
-      it 'returns a new access token as JSON' do
         expect(body_as_json[:access_token]).to_not be_blank
-      end
 
-      it 'creates a user' do
         user = User.find_by(email: 'hello@world.tld')
         expect(user).to_not be_nil
         expect(user.created_by_application_id).to eq app.id
@@ -65,18 +60,14 @@ RSpec.describe Api::V1::AccountsController do
       context 'with unlocked account' do
         let(:locked) { false }
 
-        it 'returns http success' do
+        it 'creates a following relation between user and target user', :aggregate_failures do
           expect(response).to have_http_status(200)
-        end
 
-        it 'returns JSON with following=true and requested=false' do
           json = body_as_json
 
           expect(json[:following]).to be true
           expect(json[:requested]).to be false
-        end
 
-        it 'creates a following relation between user and target user' do
           expect(user.account.following?(other_account)).to be true
         end
 
@@ -86,18 +77,14 @@ RSpec.describe Api::V1::AccountsController do
       context 'with locked account' do
         let(:locked) { true }
 
-        it 'returns http success' do
+        it 'creates a follow request relation between user and target user', :aggregate_failures do
           expect(response).to have_http_status(200)
-        end
 
-        it 'returns JSON with following=false and requested=true' do
           json = body_as_json
 
           expect(json[:following]).to be false
           expect(json[:requested]).to be true
-        end
 
-        it 'creates a follow request relation between user and target user' do
           expect(user.account.requested?(other_account)).to be true
         end
 
@@ -177,11 +164,8 @@ RSpec.describe Api::V1::AccountsController do
       post :unfollow, params: { id: other_account.id }
     end
 
-    it 'returns http success' do
+    it 'removes the following relation between user and target user', :aggregate_failures do
       expect(response).to have_http_status(200)
-    end
-
-    it 'removes the following relation between user and target user' do
       expect(user.account.following?(other_account)).to be false
     end
 
@@ -197,11 +181,8 @@ RSpec.describe Api::V1::AccountsController do
       post :remove_from_followers, params: { id: other_account.id }
     end
 
-    it 'returns http success' do
+    it 'removes the followed relation between user and target user', :aggregate_failures do
       expect(response).to have_http_status(200)
-    end
-
-    it 'removes the followed relation between user and target user' do
       expect(user.account.followed_by?(other_account)).to be false
     end
 
@@ -217,15 +198,9 @@ RSpec.describe Api::V1::AccountsController do
       post :block, params: { id: other_account.id }
     end
 
-    it 'returns http success' do
+    it 'creates a blocking relation', :aggregate_failures do
       expect(response).to have_http_status(200)
-    end
-
-    it 'removes the following relation between user and target user' do
       expect(user.account.following?(other_account)).to be false
-    end
-
-    it 'creates a blocking relation' do
       expect(user.account.blocking?(other_account)).to be true
     end
 
@@ -241,11 +216,8 @@ RSpec.describe Api::V1::AccountsController do
       post :unblock, params: { id: other_account.id }
     end
 
-    it 'returns http success' do
+    it 'removes the blocking relation between user and target user', :aggregate_failures do
       expect(response).to have_http_status(200)
-    end
-
-    it 'removes the blocking relation between user and target user' do
       expect(user.account.blocking?(other_account)).to be false
     end
 
@@ -261,19 +233,10 @@ RSpec.describe Api::V1::AccountsController do
       post :mute, params: { id: other_account.id }
     end
 
-    it 'returns http success' do
+    it 'mutes notifications', :aggregate_failures do
       expect(response).to have_http_status(200)
-    end
-
-    it 'does not remove the following relation between user and target user' do
       expect(user.account.following?(other_account)).to be true
-    end
-
-    it 'creates a muting relation' do
       expect(user.account.muting?(other_account)).to be true
-    end
-
-    it 'mutes notifications' do
       expect(user.account.muting_notifications?(other_account)).to be true
     end
 
@@ -289,19 +252,10 @@ RSpec.describe Api::V1::AccountsController do
       post :mute, params: { id: other_account.id, notifications: false }
     end
 
-    it 'returns http success' do
+    it 'does not mute notifications', :aggregate_failures do
       expect(response).to have_http_status(200)
-    end
-
-    it 'does not remove the following relation between user and target user' do
       expect(user.account.following?(other_account)).to be true
-    end
-
-    it 'creates a muting relation' do
       expect(user.account.muting?(other_account)).to be true
-    end
-
-    it 'does not mute notifications' do
       expect(user.account.muting_notifications?(other_account)).to be false
     end
 
@@ -317,19 +271,10 @@ RSpec.describe Api::V1::AccountsController do
       post :mute, params: { id: other_account.id, duration: 300 }
     end
 
-    it 'returns http success' do
+    it 'mutes notifications', :aggregate_failures do
       expect(response).to have_http_status(200)
-    end
-
-    it 'does not remove the following relation between user and target user' do
       expect(user.account.following?(other_account)).to be true
-    end
-
-    it 'creates a muting relation' do
       expect(user.account.muting?(other_account)).to be true
-    end
-
-    it 'mutes notifications' do
       expect(user.account.muting_notifications?(other_account)).to be true
     end
 
@@ -345,11 +290,8 @@ RSpec.describe Api::V1::AccountsController do
       post :unmute, params: { id: other_account.id }
     end
 
-    it 'returns http success' do
+    it 'removes the muting relation between user and target user', :aggregate_failures do
       expect(response).to have_http_status(200)
-    end
-
-    it 'removes the muting relation between user and target user' do
       expect(user.account.muting?(other_account)).to be false
     end
 

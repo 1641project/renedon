@@ -127,7 +127,7 @@ class About extends PureComponent {
     const { multiColumn, intl, server, extendedDescription, domainBlocks } = this.props;
     const isLoading = server.get('isLoading');
 
-    const fedibirdCapabilities = server.get('fedibird_capabilities');
+    const fedibirdCapabilities = server.get('fedibird_capabilities') || [];   // thinking about isLoading is true
     const isPublicUnlistedVisibility = fedibirdCapabilities.includes('kmyblue_visibility_public_unlisted');
     const isEmojiReaction = fedibirdCapabilities.includes('emoji_reaction');
 

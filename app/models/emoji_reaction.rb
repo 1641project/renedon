@@ -40,7 +40,11 @@ class EmojiReaction < ApplicationRecord
   end
 
   def sign?
-    status&.distributable_friend?
+    true
+  end
+
+  def object_type
+    :emoji_reaction
   end
 
   private

@@ -56,22 +56,6 @@ RSpec.describe 'Domain Blocks' do
             private_comment: domain_block.private_comment,
             public_comment: domain_block.public_comment,
             obfuscate: domain_block.obfuscate,
-          }
-        end
-      end
-
-      let(:expected_responde_with_kb_custom) do
-        domain_blocks.map do |domain_block|
-          {
-            id: domain_block.id.to_s,
-            domain: domain_block.domain,
-            created_at: domain_block.created_at.strftime('%Y-%m-%dT%H:%M:%S.%LZ'),
-            severity: domain_block.severity.to_s,
-            reject_media: domain_block.reject_media,
-            reject_reports: domain_block.reject_reports,
-            private_comment: domain_block.private_comment,
-            public_comment: domain_block.public_comment,
-            obfuscate: domain_block.obfuscate,
             reject_favourite: domain_block.reject_favourite,
             reject_hashtag: domain_block.reject_hashtag,
             detect_invalid_subscription: domain_block.detect_invalid_subscription,
@@ -84,6 +68,7 @@ RSpec.describe 'Domain Blocks' do
             reject_send_public_unlisted: domain_block.reject_send_public_unlisted,
             reject_send_sensitive: domain_block.reject_send_sensitive,
             reject_straight_follow: domain_block.reject_straight_follow,
+            reject_friend: domain_block.reject_friend,
           }
         end
       end
@@ -91,7 +76,7 @@ RSpec.describe 'Domain Blocks' do
       it 'returns the expected domain blocks' do
         subject
 
-        expect(body_as_json).to match_array(expected_responde_with_kb_custom)
+        expect(body_as_json).to match_array(expected_responde)
       end
 
       context 'with limit param' do
@@ -136,6 +121,7 @@ RSpec.describe 'Domain Blocks' do
         reject_send_public_unlisted: domain_block.reject_send_public_unlisted,
         reject_send_sensitive: domain_block.reject_send_sensitive,
         reject_straight_follow: domain_block.reject_straight_follow,
+        reject_friend: domain_block.reject_friend,
       }
     end
 
@@ -143,16 +129,36 @@ RSpec.describe 'Domain Blocks' do
     it_behaves_like 'forbidden for wrong role', ''
     it_behaves_like 'forbidden for wrong role', 'Moderator'
 
-    it 'returns http success' do
+    it 'returns the expected domain block content', :aggregate_failures do # rubocop:disable RSpec/ExampleLength
       subject
 
       expect(response).to have_http_status(200)
-    end
-
-    it 'returns the expected domain block content' do
-      subject
-
-      expect(body_as_json).to eq(expected_response)
+      expect(body_as_json).to eq(
+        {
+          id: domain_block.id.to_s,
+          domain: domain_block.domain,
+          created_at: domain_block.created_at.strftime('%Y-%m-%dT%H:%M:%S.%LZ'),
+          severity: domain_block.severity.to_s,
+          reject_media: domain_block.reject_media,
+          reject_reports: domain_block.reject_reports,
+          private_comment: domain_block.private_comment,
+          public_comment: domain_block.public_comment,
+          obfuscate: domain_block.obfuscate,
+          reject_favourite: domain_block.reject_favourite,
+          reject_hashtag: domain_block.reject_hashtag,
+          detect_invalid_subscription: domain_block.detect_invalid_subscription,
+          reject_new_follow: domain_block.reject_new_follow,
+          reject_reply: domain_block.reject_reply,
+          reject_reply_exclude_followers: domain_block.reject_reply_exclude_followers,
+          reject_send_dissubscribable: domain_block.reject_send_dissubscribable,
+          reject_send_media: domain_block.reject_send_media,
+          reject_send_not_public_searchability: domain_block.reject_send_not_public_searchability,
+          reject_send_public_unlisted: domain_block.reject_send_public_unlisted,
+          reject_send_sensitive: domain_block.reject_send_sensitive,
+          reject_straight_follow: domain_block.reject_straight_follow,
+          reject_friend: domain_block.reject_friend,
+        }
+      )
     end
 
     context 'when the requested domain block does not exist' do
@@ -175,27 +181,18 @@ RSpec.describe 'Domain Blocks' do
     it_behaves_like 'forbidden for wrong role', ''
     it_behaves_like 'forbidden for wrong role', 'Moderator'
 
-    it 'returns http success' do
-      subject
-
-      expect(response).to have_http_status(200)
-    end
-
-    it 'returns expected domain name and severity' do
+    it 'returns expected domain name and severity', :aggregate_failures do
       subject
 
       body = body_as_json
 
+      expect(response).to have_http_status(200)
       expect(body).to match a_hash_including(
         {
           domain: 'foo.bar.com',
           severity: 'silence',
         }
       )
-    end
-
-    it 'creates a domain block' do
-      subject
 
       expect(DomainBlock.find_by(domain: 'foo.bar.com')).to be_present
     end
@@ -205,15 +202,10 @@ RSpec.describe 'Domain Blocks' do
         Fabricate(:domain_block, domain: 'bar.com', severity: :suspend)
       end
 
-      it 'returns http unprocessable entity' do
+      it 'returns existing domain block in error', :aggregate_failures do
         subject
 
         expect(response).to have_http_status(422)
-      end
-
-      it 'returns existing domain block in error' do
-        subject
-
         expect(body_as_json[:existing_domain_block][:domain]).to eq('bar.com')
       end
     end
@@ -241,15 +233,10 @@ RSpec.describe 'Domain Blocks' do
     it_behaves_like 'forbidden for wrong role', ''
     it_behaves_like 'forbidden for wrong role', 'Moderator'
 
-    it 'returns http success' do
+    it 'returns the updated domain block', :aggregate_failures do
       subject
 
       expect(response).to have_http_status(200)
-    end
-
-    it 'returns the updated domain block' do
-      subject
-
       expect(body_as_json).to match a_hash_including(
         {
           id: domain_block.id.to_s,
@@ -283,15 +270,10 @@ RSpec.describe 'Domain Blocks' do
     it_behaves_like 'forbidden for wrong role', ''
     it_behaves_like 'forbidden for wrong role', 'Moderator'
 
-    it 'returns http success' do
+    it 'deletes the domain block', :aggregate_failures do
       subject
 
       expect(response).to have_http_status(200)
-    end
-
-    it 'deletes the domain block' do
-      subject
-
       expect(DomainBlock.find_by(id: domain_block.id)).to be_nil
     end
 
